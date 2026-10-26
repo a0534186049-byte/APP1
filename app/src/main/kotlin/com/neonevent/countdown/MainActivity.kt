@@ -16,6 +16,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowInsets
 import android.widget.Button
 import android.widget.EditText
@@ -48,7 +49,7 @@ class MainActivity : Activity() {
 
     private fun buildUi() {
         val scroll = ScrollView(this).apply {
-            fillViewport = true
+            isFillViewport = true
             clipToPadding = false
             setBackgroundColor(backgroundColor)
         }
@@ -58,7 +59,7 @@ class MainActivity : Activity() {
             setPadding(dp(16), dp(18), dp(16), dp(20))
             setBackgroundColor(backgroundColor)
         }
-        scroll.addView(root, ScrollView.LayoutParams(-1, -2))
+        scroll.addView(root, ViewGroup.LayoutParams(-1, -2))
         val heading = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
