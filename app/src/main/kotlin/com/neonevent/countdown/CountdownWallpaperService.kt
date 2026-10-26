@@ -58,8 +58,8 @@ class CountdownWallpaperService : WallpaperService() {
             } catch (_: Exception) {
                 // Surface can disappear while the launcher changes wallpaper.
             } finally {
-                if (canvas != null) {
-                    runCatching { surfaceHolder.unlockCanvasAndPost(canvas) }
+                canvas?.let { finishedCanvas ->
+                    runCatching { surfaceHolder.unlockCanvasAndPost(finishedCanvas) }
                 }
             }
         }
