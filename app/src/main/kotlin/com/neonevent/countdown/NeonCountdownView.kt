@@ -42,7 +42,7 @@ class NeonCountdownView(context: Context) : View(context) {
         super.onVisibilityAggregated(isVisible)
         active = isVisible
         if (active) invalidate()
-        else removeCallbacks(null)
+        // No new frames are posted while the view is hidden.
     }
 }
 
