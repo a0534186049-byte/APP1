@@ -1,0 +1,92 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test and build APKs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 36 SDK components
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Prepare release signing key
+        shell: bash
+        env:
+          STABLE_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STABLE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          STABLE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          KEYSTORE="$RUNNER_TEMP/neon-countdown-release.jks"
+          if [[ -n "$STABLE_KEYSTORE_BASE64" && -n "$STABLE_KEYSTORE_PASSWORD" && -n "$STABLE_KEY_ALIAS" ]]; then
+            echo "$STABLE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+            PASSWORD="$STABLE_KEYSTORE_PASSWORD"
+            ALIAS="$STABLE_KEY_ALIAS"
+            echo "Using repository-provided stable signing key."
+          else
+            PASSWORD="$(openssl rand -hex 18)"
+            ALIAS="eventcountdown"
+            keytool -genkeypair -noprompt -v \
+              -keystore "$KEYSTORE" -storetype JKS \
+              -storepass "$PASSWORD" -keypass "$PASSWORD" \
+              -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Neon Event Countdown, OU=Build, O=Local, L=Local, ST=Local, C=IL"
+            echo "::warning::No stable signing secrets were set; this Release APK will install, but future CI builds may not update it in place."
+          fi
+          echo "RELEASE_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "RELEASE_KEYSTORE_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+          echo "RELEASE_KEY_ALIAS=$ALIAS" >> "$GITHUB_ENV"
+
+      - name: Run unit tests and build Debug and Release
+        run: gradle --no-daemon clean testDebugUnitTest assembleDebug assembleRelease
+
+      - name: Verify APKs and enforce 30 MB limit
+        shell: bash
+        run: |
+          set -euo pipefail
+          for apk in app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/release/app-release.apk; do
+            test -f "$apk"
+            bytes="$(stat -c '%s' "$apk")"
+            echo "$apk: $bytes bytes"
+            test "$bytes" -lt 30000000
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          done
+          if grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml; then
+            echo "Unexpected INTERNET permission"
+            exit 1
+          fi
+
+      - name: Upload installable APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-countdown-apks
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release.apk
+            app/build/test-results/testDebugUnitTest/*.xml
