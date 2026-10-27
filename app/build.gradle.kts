@@ -3,6 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val ciRunNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+
 android {
     namespace = "com.neonevent.countdown"
     compileSdk = 36
@@ -11,8 +13,10 @@ android {
         applicationId = "com.neonevent.countdown"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        // Increase the installed app's version code on each GitHub Actions run so Android
+        // recognizes later APKs as updates instead of treating them as the same/older build.
+        versionCode = ciRunNumber?.takeIf { it > 0 } ?: 1
+        versionName = ciRunNumber?.takeIf { it > 0 }?.let { "1.0.$it" } ?: "1.0.0"
         testInstrumentationRunner = "android.test.InstrumentationTestRunner"
     }
 
