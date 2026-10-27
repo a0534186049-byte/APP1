@@ -7,7 +7,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -43,13 +47,19 @@ jobs:
           STABLE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           STABLE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
+          set -euo pipefail
           KEYSTORE="$RUNNER_TEMP/neon-countdown-release.jks"
+
           if [[ -n "$STABLE_KEYSTORE_BASE64" && -n "$STABLE_KEYSTORE_PASSWORD" && -n "$STABLE_KEY_ALIAS" ]]; then
-            echo "$STABLE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+            printf '%s' "$STABLE_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE"
+            test -s "$KEYSTORE"
+            keytool -list -keystore "$KEYSTORE" -storepass "$STABLE_KEYSTORE_PASSWORD" -alias "$STABLE_KEY_ALIAS" >/dev/null
             PASSWORD="$STABLE_KEYSTORE_PASSWORD"
             ALIAS="$STABLE_KEY_ALIAS"
             echo "Using repository-provided stable signing key."
-          else
+          elif [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            # Non-main builds may use a temporary key for testing only. They are never
+            # published as the installable main-branch Release APK.
             PASSWORD="$(openssl rand -hex 18)"
             ALIAS="eventcountdown"
             keytool -genkeypair -noprompt -v \
@@ -57,8 +67,12 @@ jobs:
               -storepass "$PASSWORD" -keypass "$PASSWORD" \
               -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=Neon Event Countdown, OU=Build, O=Local, L=Local, ST=Local, C=IL"
-            echo "::warning::No stable signing secrets were set; this Release APK will install, but future CI builds may not update it in place."
+            echo "::warning::Temporary signing key used for a non-main test build only."
+          else
+            echo "::error::Stable signing key not configured. Add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, and ANDROID_KEY_ALIAS under Settings > Secrets and variables > Actions before building/publishing main."
+            exit 1
           fi
+
           echo "RELEASE_KEYSTORE_PATH=$KEYSTORE" >> "$GITHUB_ENV"
           echo "RELEASE_KEYSTORE_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
           echo "RELEASE_KEY_ALIAS=$ALIAS" >> "$GITHUB_ENV"
@@ -82,6 +96,7 @@ jobs:
             exit 1
           fi
 
+      # Keep Actions artifacts as a backup, but the normal download path is the Release asset below.
       - name: Upload installable APK artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -92,3 +107,31 @@ jobs:
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release.apk
             app/build/test-results/testDebugUnitTest/*.xml
+
+      - name: Publish or update the fixed GitHub Release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_tag="latest-apk"
+          apk="app/build/outputs/apk/release/app-release.apk"
+
+          if ! gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release create "$release_tag" \
+              --target "$GITHUB_SHA" \
+              --title "Latest APK" \
+              --notes "Automatic release for the Neon Event Countdown app. The app-release.apk asset is replaced after each successful build on main."
+          fi
+
+          gh release upload "$release_tag" "$apk" --clobber
+          gh release edit "$release_tag" \
+            --title "Latest APK" \
+            --notes "Automatically updated from main. Latest GitHub Actions run: #$GITHUB_RUN_NUMBER (commit $GITHUB_SHA). Download app-release.apk below."
+
+          asset_size="$(gh release view "$release_tag" --json assets --jq '.assets[] | select(.name == "app-release.apk") | .size')"
+          test -n "$asset_size"
+          test "$asset_size" -gt 0
+          echo "Verified Release asset app-release.apk ($asset_size bytes)."
+          echo "Direct download URL: https://github.com/$GITHUB_REPOSITORY/releases/download/$release_tag/app-release.apk"
