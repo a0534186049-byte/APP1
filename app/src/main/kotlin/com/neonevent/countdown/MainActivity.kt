@@ -68,8 +68,10 @@ class MainActivity : Activity() {
             elevation = dp(4).toFloat()
             setOnClickListener { buildSettingsScreen() }
         }
-        frame.addView(settings, FrameLayout.LayoutParams(dp(54), dp(54), Gravity.TOP or Gravity.START).apply {
-            topMargin = dp(18); marginStart = dp(16)
+        // Use physical LEFT gravity, not START, so RTL layout never mirrors this button.
+        frame.addView(settings, FrameLayout.LayoutParams(dp(54), dp(54), Gravity.TOP or Gravity.LEFT).apply {
+            topMargin = dp(18)
+            leftMargin = dp(16)
         })
         setContentView(frame)
     }
