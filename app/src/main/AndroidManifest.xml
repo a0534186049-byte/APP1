@@ -3,8 +3,6 @@
     <uses-feature android:name="android.software.live_wallpaper" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -34,9 +32,7 @@
                 <action android:name="android.service.dreams.DreamService" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <meta-data
-                android:name="android.service.dream"
-                android:resource="@xml/dream" />
+            <meta-data android:name="android.service.dream" android:resource="@xml/dream" />
         </service>
 
         <service
@@ -47,21 +43,25 @@
             <intent-filter>
                 <action android:name="android.service.wallpaper.WallpaperService" />
             </intent-filter>
-            <meta-data
-                android:name="android.service.wallpaper"
-                android:resource="@xml/wallpaper" />
+            <meta-data android:name="android.service.wallpaper" android:resource="@xml/wallpaper" />
         </service>
 
         <receiver
-            android:name=".CountdownAlarmReceiver"
-            android:enabled="true"
-            android:exported="false">
+            android:name=".CountdownWidgetWithTitleProvider"
+            android:exported="true">
             <intent-filter>
-                <action android:name="com.neonevent.countdown.ALARM" />
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.TIME_SET" />
-                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_with_title" />
+        </receiver>
+
+        <receiver
+            android:name=".CountdownWidgetNoTitleProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_no_title" />
         </receiver>
     </application>
 </manifest>

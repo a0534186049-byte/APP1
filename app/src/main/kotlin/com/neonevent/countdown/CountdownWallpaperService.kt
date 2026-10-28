@@ -17,7 +17,7 @@ class CountdownWallpaperService : WallpaperService() {
             override fun run() {
                 if (!visible) return
                 drawFrame()
-                handler.postDelayed(this, if (prefs.animationSpeed == 0) 1000L else 34L)
+                handler.postDelayed(this, 1000L)
             }
         }
 
@@ -49,18 +49,13 @@ class CountdownWallpaperService : WallpaperService() {
             var canvas: Canvas? = null
             try {
                 canvas = surfaceHolder.lockCanvas()
-                if (canvas != null) {
-                    NeonCountdownRenderer.draw(
-                        canvas, canvas.width.toFloat(), canvas.height.toFloat(),
-                        prefs, System.currentTimeMillis()
-                    )
-                }
+                if (canvas != null) NeonCountdownRenderer.draw(
+                    canvas, canvas.width.toFloat(), canvas.height.toFloat(), prefs, System.currentTimeMillis()
+                )
             } catch (_: Exception) {
-                // Surface can disappear while the launcher changes wallpaper.
+                // The system can destroy the wallpaper surface while the launcher changes pages.
             } finally {
-                canvas?.let { finishedCanvas ->
-                    runCatching { surfaceHolder.unlockCanvasAndPost(finishedCanvas) }
-                }
+                canvas?.let { runCatching { surfaceHolder.unlockCanvasAndPost(it) } }
             }
         }
     }

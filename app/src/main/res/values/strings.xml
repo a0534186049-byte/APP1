@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ספירה לאחור לאירוע</string>
-    <string name="dream_name">ספירה לאחור — שומר מסך</string>
+    <string name="app_name">ספירה לאחור לחתונה</string>
+    <string name="dream_name">ספירה לאחור לחתונה — שומר מסך</string>
     <string name="dream_description">מציג את הספירה לאחור במצב שומר מסך</string>
-    <string name="wallpaper_description">רקע חי עם ספירה לאחור לאירוע</string>
+    <string name="wallpaper_description">רקע חי עם ספירה לאחור לחתונה</string>
     <string name="settings_description">הגדרות הספירה לאחור</string>
+    <string name="widget_background_description">הרקע שנבחר לספירה לאחור</string>
 </resources>
