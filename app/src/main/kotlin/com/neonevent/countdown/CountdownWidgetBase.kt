@@ -16,23 +16,52 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_WIDGET_TICK) {
-            val manager = AppWidgetManager.getInstance(context)
-            val ids = manager.getAppWidgetIds(ComponentName(context, javaClass))
-            updateProvider(context, manager, ids, displaysTitle())
+        when (intent.action) {
+            ACTION_WIDGET_TICK -> updateThisProvider(context)
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED -> {
+                // Alarms are cleared on reboot. Rebuild the widget immediately and restart
+                // the low-power, non-wakeup refresh schedule only if this widget exists.
+                updateThisProvider(context)
+                scheduleTicksIfNeeded(context)
+            }
         }
     }
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         updateProvider(context, manager, ids, displaysTitle())
-        scheduleTicks(context)
+        if (ids.isNotEmpty()) scheduleTicks(context)
     }
 
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
-        scheduleTicks(context)
+        scheduleTicksIfNeeded(context)
     }
 
+    override fun onDisabled(context: Context) {
+        cancelTicks(context)
+        super.onDisabled(context)
+    }
+
+    private fun updateThisProvider(context: Context) {
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = manager.getAppWidgetIds(ComponentName(context, javaClass))
+        updateProvider(context, manager, ids, displaysTitle())
+    }
+
+    private fun scheduleTicksIfNeeded(context: Context) {
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = manager.getAppWidgetIds(ComponentName(context, javaClass))
+        if (ids.isNotEmpty()) scheduleTicks(context) else cancelTicks(context)
+    }
+
+    /**
+     * Standard home-screen widgets cannot reliably repaint all fields every second. Keep a
+     * non-wakeup, inexact one-minute alarm: it is batched by Android, doesn't hold a wake lock,
+     * and every delivery recalculates the full countdown from the saved target instant.
+     */
     private fun scheduleTicks(context: Context) {
         val requestCode = if (displaysTitle()) REQUEST_WITH_TITLE else REQUEST_NO_TITLE
         val intent = Intent(context, javaClass).setAction(ACTION_WIDGET_TICK)
@@ -44,17 +73,31 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
         runCatching {
             alarm.setInexactRepeating(
                 AlarmManager.RTC,
-                System.currentTimeMillis() + 60_000L,
-                60_000L,
+                System.currentTimeMillis() + REFRESH_INTERVAL_MS,
+                REFRESH_INTERVAL_MS,
                 pending
             )
         }
+    }
+
+    private fun cancelTicks(context: Context) {
+        val requestCode = if (displaysTitle()) REQUEST_WITH_TITLE else REQUEST_NO_TITLE
+        val pending = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            Intent(context, javaClass).setAction(ACTION_WIDGET_TICK),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarm.cancel(pending)
+        pending.cancel()
     }
 
     companion object {
         const val ACTION_WIDGET_TICK = "com.neonevent.countdown.WIDGET_TICK"
         private const val REQUEST_WITH_TITLE = 9911
         private const val REQUEST_NO_TITLE = 9912
+        private const val REFRESH_INTERVAL_MS = 60_000L
 
         fun updateAllWidgets(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
@@ -79,6 +122,7 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             if (ids.isEmpty()) return
             val prefs = CountdownPrefs(context)
             val now = System.currentTimeMillis()
+            // Always recompute from the saved target, never decrement the previous display value.
             val parts = CountdownMath.calculate(prefs.targetMillis(now), now)
             val views = RemoteViews(context.packageName, R.layout.countdown_widget)
             views.setViewVisibility(R.id.widget_title, if (showTitle && prefs.showTitle) android.view.View.VISIBLE else android.view.View.GONE)
