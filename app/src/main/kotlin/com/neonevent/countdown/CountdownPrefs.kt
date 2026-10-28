@@ -197,7 +197,8 @@ class CountdownPrefs(context: Context) {
             cal.set(Calendar.YEAR, year.coerceAtLeast(1))
             cal.set(Calendar.MONTH, month)
             cal.set(Calendar.DAY_OF_MONTH, 1)
-            month to (cal.getDisplayName(Calendar.MONTH, Calendar.LONG, hebrewLocale) ?: "חודש " + (month + 1))
+            val monthFormat = SimpleDateFormat("MMMM", hebrewLocale).apply { calendar = cal }
+            month to monthFormat.format(Date(cal.timeInMillis))
         }
     }
 

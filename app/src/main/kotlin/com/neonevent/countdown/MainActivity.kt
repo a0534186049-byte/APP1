@@ -119,7 +119,7 @@ class MainActivity : Activity() {
 
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
         val labels = CountdownPrefs.themeNames
-        for (i in ids.indices) {
+        for (i in labels.indices) {
             val tile = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
