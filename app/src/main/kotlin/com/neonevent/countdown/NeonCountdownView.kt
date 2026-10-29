@@ -79,7 +79,10 @@ object NeonCountdownRenderer {
             paint.color = Color.WHITE
             paint.alpha = 255
             paint.isFilterBitmap = true
-            val scale = min(w / bitmap.width.toFloat(), h / bitmap.height.toFloat())
+            // Scale proportionally to cover the screen. The supplied portrait artworks use
+            // the same 9:16 ratio as the target display, so they fill it without visible bars.
+            // This also prevents the narrow legacy placeholders from appearing as a small strip.
+            val scale = maxOf(w / bitmap.width.toFloat(), h / bitmap.height.toFloat())
             val drawW = bitmap.width * scale
             val drawH = bitmap.height * scale
             imageRect.set((w - drawW) / 2f, (h - drawH) / 2f,
