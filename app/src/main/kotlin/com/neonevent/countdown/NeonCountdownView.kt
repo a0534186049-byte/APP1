@@ -7,6 +7,10 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextDirectionHeuristics
+import android.text.TextPaint
 import android.view.View
 import java.util.Locale
 import kotlin.math.min
@@ -111,7 +115,7 @@ object NeonCountdownRenderer {
             if (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM || isPersonal) {
                 paint.setShadowLayer(w * 0.008f, 0f, 2f, 0xA0000000.toInt())
             }
-            canvas.drawText(title, centerX, h * 0.205f, paint)
+            drawCenteredRtlText(canvas, title, centerX, h * 0.205f, w * 0.88f, paint, 1)
             paint.clearShadowLayer()
         }
 
@@ -173,12 +177,13 @@ object NeonCountdownRenderer {
             paint.setShadowLayer(if (!isPersonal && (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM)) 2f else 0f,
                 0f, 1f, 0x66000000)
             val digits = if (index == 0) values[index].toString() else String.format(Locale.ROOT, "%02d", values[index])
-            canvas.drawText(digits, x + boxWidth / 2f, top + boxHeight * 0.55f, paint)
+            if (index == 0) canvas.drawText(digits, x + boxWidth / 2f, top + boxHeight * 0.55f, paint)
+            else canvas.drawText(digits, x + boxWidth / 2f, top + boxHeight * 0.55f, paint)
             paint.clearShadowLayer()
             paint.textSize = min(boxWidth * 0.19f, 21f).coerceAtLeast(14f)
             paint.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
             paint.color = labelColor
-            canvas.drawText(labels[index], x + boxWidth / 2f, top + boxHeight * 0.82f, paint)
+            drawCenteredRtlText(canvas, labels[index], x + boxWidth / 2f, top + boxHeight * 0.82f, boxWidth * 0.94f, paint, 1)
         }
 
         val dayTop = h * 0.275f
@@ -200,7 +205,7 @@ object NeonCountdownRenderer {
             paint.textSize = min(w * 0.064f, h * 0.032f).coerceAtLeast(22f)
             paint.color = accent
             paint.setShadowLayer(3f, 0f, 2f, 0xA0000000.toInt())
-            canvas.drawText("האירוע כבר הגיע", centerX, h * 0.25f, paint)
+            drawCenteredRtlText(canvas, "האירוע כבר הגיע", centerX, h * 0.25f, w * 0.9f, paint, 1)
             paint.clearShadowLayer()
         }
 
@@ -213,7 +218,7 @@ object NeonCountdownRenderer {
         paint.setShadowLayer(2f, 0f, 1f, 0x99000000.toInt())
         val eventDateLabel = "תאריך האירוע: ${prefs.formattedTargetDate()}"
         while (paint.measureText(eventDateLabel) > w * 0.92f && paint.textSize > 12f) paint.textSize -= 1f
-        canvas.drawText(eventDateLabel, centerX, targetY, paint)
+        drawCenteredRtlText(canvas, eventDateLabel, centerX, targetY, w * 0.94f, paint, 1)
         paint.clearShadowLayer()
 
         val quote = prefs.dailyQuote(nowMillis).ifBlank {
@@ -232,28 +237,38 @@ object NeonCountdownRenderer {
         canvas: Canvas, text: String, centerX: Float, firstBaseline: Float,
         maxWidth: Float, textPaint: Paint, maxLines: Int, lineHeight: Float
     ) {
-        if (text.isBlank()) return
-        val words = text.split(Regex("\\s+"))
-        val lines = mutableListOf<String>()
-        var current = ""
-        for (word in words) {
-            val candidate = if (current.isEmpty()) word else "$current $word"
-            if (current.isNotEmpty() && textPaint.measureText(candidate) > maxWidth) {
-                lines += current
-                current = word
-            } else current = candidate
-        }
-        if (current.isNotEmpty()) lines += current
-        val visible = if (lines.size <= maxLines) lines else {
-            val result = lines.take(maxLines).toMutableList()
-            var last = result.last()
-            while (last.isNotEmpty() && textPaint.measureText("$last…") > maxWidth) last = last.dropLast(1)
-            result[result.lastIndex] = "$last…"
-            result
-        }
-        visible.forEachIndexed { index, line ->
-            canvas.drawText(line, centerX, firstBaseline + index * lineHeight, textPaint)
-        }
+        drawCenteredRtlText(canvas, text, centerX, firstBaseline, maxWidth, textPaint, maxLines, lineHeight)
+    }
+
+    /**
+     * Canvas.drawText does not perform full paragraph bidi layout. StaticLayout does, so Hebrew
+     * dates, titles, labels and quotes remain in the correct RTL order on every supported device.
+     */
+    private fun drawCenteredRtlText(
+        canvas: Canvas,
+        text: String,
+        centerX: Float,
+        baseline: Float,
+        maxWidth: Float,
+        sourcePaint: Paint,
+        maxLines: Int,
+        lineSpacing: Float = 0f
+    ) {
+        if (text.isEmpty() || maxWidth <= 1f) return
+        val textPaint = TextPaint(sourcePaint)
+        val layout = StaticLayout.Builder.obtain(
+            text, 0, text.length, textPaint, maxWidth.toInt().coerceAtLeast(1)
+        )
+            .setAlignment(Layout.Alignment.ALIGN_CENTER)
+            .setTextDirection(TextDirectionHeuristics.FIRSTSTRONG_RTL)
+            .setIncludePad(false)
+            .setMaxLines(maxLines.coerceAtLeast(1))
+            .setLineSpacing(lineSpacing.coerceAtLeast(0f), 1f)
+            .build()
+        canvas.save()
+        canvas.translate(centerX - maxWidth / 2f, baseline + textPaint.ascent())
+        layout.draw(canvas)
+        canvas.restore()
     }
 
 }
