@@ -319,7 +319,7 @@ class MainActivity : Activity() {
             val firstDay = prefs.firstWeekdayOfHebrewMonth(currentYear, currentMonth)
             val maxDay = prefs.daysInHebrewMonth(currentYear, currentMonth)
             currentDay = currentDay.coerceIn(1, maxDay)
-            selectedText.text = hebrewYearLabel(currentDay) + " ב" + (monthOptions.firstOrNull { it.first == currentMonth }?.second ?: "")
+            selectedText.text = hebrewYearLabel(currentDay) + " ב" + (monthOptions.firstOrNull { it.first == currentMonth }?.second ?: "") + " " + hebrewYearLabel(currentYear)
             for (index in 0 until firstDay + maxDay) {
                 val rowIndex = index / 7 + 1
                 val colIndex = index % 7
