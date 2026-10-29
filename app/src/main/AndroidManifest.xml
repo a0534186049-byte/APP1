@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-feature android:name="android.software.live_wallpaper" android:required="false" />
+    <uses-feature android:name="android.software.app_widgets" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
     <application
