@@ -354,7 +354,9 @@ class MainActivity : Activity() {
             val oldMonthName = monthOptions.firstOrNull { it.first == currentMonth }?.second
             currentYear = newValue
             val newOptions = prefs.monthOptions(currentYear)
-            val preferred = newOptions.firstOrNull { it.second == oldMonthName }?.first ?: currentMonth
+            val preferred = newOptions.firstOrNull { it.second == oldMonthName }?.first
+                ?: newOptions.firstOrNull { it.first >= currentMonth }?.first
+                ?: newOptions.last().first
             fillMonthOptions(preferred)
             currentDay = currentDay.coerceAtMost(prefs.daysInHebrewMonth(currentYear, currentMonth))
             drawDays()
