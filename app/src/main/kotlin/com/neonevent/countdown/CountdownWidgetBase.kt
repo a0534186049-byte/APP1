@@ -125,7 +125,7 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             // Always recompute from the saved target, never decrement the previous display value.
             val parts = CountdownMath.calculateDateOnly(prefs.targetMillis(now), now)
             val views = RemoteViews(context.packageName, R.layout.countdown_widget)
-            views.setViewVisibility(R.id.widget_title, if (showTitle && prefs.showTitle) android.view.View.VISIBLE else android.view.View.GONE)
+            views.setViewVisibility(R.id.widget_title, if (showTitle) android.view.View.VISIBLE else android.view.View.GONE)
             views.setTextViewText(R.id.widget_title, prefs.eventTitle)
             views.setTextViewText(R.id.widget_days_value, parts.days.toString())
             views.setTextViewText(R.id.widget_hours_value, String.format(Locale.ROOT, "%02d", parts.hours))
