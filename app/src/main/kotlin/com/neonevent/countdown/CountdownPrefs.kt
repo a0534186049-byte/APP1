@@ -113,9 +113,11 @@ class CountdownPrefs(context: Context) {
 
     fun formattedTargetDate(): String {
         val cal = targetCalendar()
-        val monthFormat = SimpleDateFormat("MMMM", hebrewLocale).apply { calendar = cal }
-        val monthName = monthFormat.format(Date(cal.timeInMillis))
-        return "${hebrewYearNumeral(cal.get(Calendar.DAY_OF_MONTH))} ב$monthName ${hebrewYearNumeral(cal.get(Calendar.YEAR))}"
+        val monthName = monthOptions(cal.get(Calendar.YEAR))
+            .firstOrNull { it.first == cal.get(Calendar.MONTH) }?.second ?: "חודש"
+        val day = hebrewYearNumeral(cal.get(Calendar.DAY_OF_MONTH))
+        val year = hebrewYearNumeral(cal.get(Calendar.YEAR))
+        return "$day ב$monthName $year"
     }
 
     fun formattedTargetDateWithTime(): String = formattedTargetDate()
@@ -200,15 +202,18 @@ class CountdownPrefs(context: Context) {
         probe.set(Calendar.MONTH, 0)
         probe.set(Calendar.DAY_OF_MONTH, 1)
         val maxMonth = probe.getActualMaximum(Calendar.MONTH)
-        return (0..maxMonth).map { month ->
-            val cal = HebrewCalendar(hebrewLocale)
-            cal.clear()
-            cal.set(Calendar.YEAR, year.coerceAtLeast(1))
-            cal.set(Calendar.MONTH, month)
-            cal.set(Calendar.DAY_OF_MONTH, 1)
-            val monthFormat = SimpleDateFormat("MMMM", hebrewLocale).apply { calendar = cal }
-            month to monthFormat.format(Date(cal.timeInMillis))
+        val names = if (maxMonth >= 12) {
+            listOf(
+                "תשרי", "חשוון", "כסלו", "טבת", "שבט", "אדר א׳", "אדר ב׳",
+                "ניסן", "אייר", "סיוון", "תמוז", "אב", "אלול"
+            )
+        } else {
+            listOf(
+                "תשרי", "חשוון", "כסלו", "טבת", "שבט", "אדר",
+                "ניסן", "אייר", "סיוון", "תמוז", "אב", "אלול"
+            )
         }
+        return names.mapIndexed { index, name -> index to name }
     }
 
     fun daysInHebrewMonth(year: Int, month: Int): Int {
