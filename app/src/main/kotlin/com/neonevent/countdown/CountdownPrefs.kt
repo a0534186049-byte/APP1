@@ -228,7 +228,7 @@ class CountdownPrefs(context: Context) {
             3 to "טבת",
             4 to "שבט",
             5 to "אדר א׳",
-            6 to "אדר",
+            6 to if (isLeapYear) "אדר ב׳" else "אדר",
             7 to "ניסן",
             8 to "אייר",
             9 to "סיוון",
