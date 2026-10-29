@@ -7,7 +7,9 @@ import android.net.Uri
 import android.icu.text.SimpleDateFormat
 import android.icu.util.Calendar
 import android.icu.util.HebrewCalendar
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 
@@ -83,23 +85,31 @@ class CountdownPrefs(context: Context) {
     fun isUnitVisible(index: Int): Boolean = (unitsMask and (1 shl index)) != 0
 
     fun setHebrewDate(year: Int, month: Int, day: Int) {
-        val cal = hebrewCalendar(year, month, day, targetHour, targetMinute)
+        val cal = hebrewCalendar(year, month, day, 0, 0)
         prefs.edit()
             .putInt("hebrew_year", cal.get(Calendar.YEAR))
             .putInt("hebrew_month", cal.get(Calendar.MONTH))
             .putInt("hebrew_day", cal.get(Calendar.DAY_OF_MONTH))
+            .putInt("target_hour", 0)
+            .putInt("target_minute", 0)
             .putBoolean("hebrew_date_migrated", true)
             .apply()
     }
 
     fun targetCalendar(): HebrewCalendar = hebrewCalendar(
-        targetHebrewYear, targetHebrewMonth, targetHebrewDay, targetHour, targetMinute
+        targetHebrewYear, targetHebrewMonth, targetHebrewDay, 0, 0
     )
+
+    fun eventLocalDate(): LocalDate = Instant.ofEpochMilli(targetCalendar().timeInMillis)
+        .atZone(ZoneId.systemDefault()).toLocalDate()
+
+    fun dailyQuote(nowMillis: Long): String =
+        DailyQuoteProvider.quote(appContext, nowMillis, runCatching { eventLocalDate() }.getOrNull())
 
     fun targetMillis(nowMillis: Long = System.currentTimeMillis()): Long =
         runCatching { targetCalendar().timeInMillis }.getOrElse { nowMillis }
 
-    fun targetKey(): String = "$targetHebrewYear|$targetHebrewMonth|$targetHebrewDay|$targetHour|$targetMinute"
+    fun targetKey(): String = "$targetHebrewYear|$targetHebrewMonth|$targetHebrewDay"
 
     fun formattedTargetDate(): String {
         val cal = targetCalendar()
@@ -108,8 +118,7 @@ class CountdownPrefs(context: Context) {
         return dateFormat.format(Date(cal.timeInMillis)) + " " + hebrewYearNumeral(cal.get(Calendar.YEAR))
     }
 
-    fun formattedTargetDateWithTime(): String =
-        formattedTargetDate() + " • " + String.format(Locale.ROOT, "%02d:%02d", targetHour, targetMinute)
+    fun formattedTargetDateWithTime(): String = formattedTargetDate()
 
     fun backgroundBitmap(): Bitmap? {
         val key = if (theme == THEME_PERSONAL) "personal:" + (personalImageUri ?: "") else "theme:" + theme
