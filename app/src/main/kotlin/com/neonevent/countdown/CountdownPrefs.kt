@@ -18,6 +18,8 @@ class CountdownPrefs(context: Context) {
     private val prefs = appContext.getSharedPreferences("event_countdown_settings", Context.MODE_PRIVATE)
     private var cachedBitmapKey: String? = null
     private var cachedBitmap: Bitmap? = null
+    private var cachedBackdropKey: String? = null
+    private var cachedBackdropBitmap: Bitmap? = null
 
     companion object {
         const val THEME_GOLD = 0
@@ -135,6 +137,25 @@ class CountdownPrefs(context: Context) {
             backgroundBitmapForTheme(theme)
         }
         return cachedBitmap
+    }
+
+    /**
+     * A tiny version of the selected artwork used only to fill empty screen edges.
+     * The full-resolution source remains sharp and proportionally fitted above it.
+     */
+    fun backgroundBackdropBitmap(): Bitmap? {
+        val key = if (theme == THEME_PERSONAL) "personal:" + (personalImageUri ?: "") else "theme:$theme"
+        if (key == cachedBackdropKey) return cachedBackdropBitmap
+        cachedBackdropKey = key
+        cachedBackdropBitmap = runCatching {
+            val source = backgroundBitmap() ?: return@runCatching null
+            val maxDimension = maxOf(source.width, source.height).coerceAtLeast(1)
+            val ratio = minOf(1f, 96f / maxDimension.toFloat())
+            val width = (source.width * ratio).toInt().coerceAtLeast(1)
+            val height = (source.height * ratio).toInt().coerceAtLeast(1)
+            Bitmap.createScaledBitmap(source, width, height, true)
+        }.getOrNull()
+        return cachedBackdropBitmap
     }
 
     fun backgroundBitmapForTheme(themeIndex: Int): Bitmap? {
