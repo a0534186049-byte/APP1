@@ -237,7 +237,7 @@ object NeonCountdownRenderer {
         canvas: Canvas, text: String, centerX: Float, firstBaseline: Float,
         maxWidth: Float, textPaint: Paint, maxLines: Int, lineHeight: Float
     ) {
-        drawCenteredRtlText(canvas, text, centerX, firstBaseline, maxWidth, textPaint, maxLines, lineHeight)
+        drawCenteredRtlText(canvas, text, centerX, firstBaseline, maxWidth, textPaint, maxLines)
     }
 
     /**
