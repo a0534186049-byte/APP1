@@ -135,7 +135,7 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_hours_label, "שעות")
             views.setTextViewText(R.id.widget_minutes_label, "דקות")
             views.setTextViewText(R.id.widget_seconds_label, "שניות")
-            views.setTextViewText(R.id.widget_target_date, prefs.formattedTargetDateWithTime())
+            views.setTextViewText(R.id.widget_target_date, "תאריך האירוע: " + prefs.formattedTargetDateWithTime())
             prefs.backgroundBitmap()?.let { views.setImageViewBitmap(R.id.widget_background, it) }
 
             val textColor = when {
