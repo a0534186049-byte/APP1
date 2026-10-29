@@ -217,24 +217,27 @@ class CountdownPrefs(context: Context) {
     }
 
     fun monthOptions(year: Int): List<Pair<Int, String>> {
-        val probe = HebrewCalendar(hebrewLocale)
-        probe.clear()
-        probe.set(Calendar.YEAR, year.coerceAtLeast(1))
-        probe.set(Calendar.MONTH, 0)
-        probe.set(Calendar.DAY_OF_MONTH, 1)
-        val maxMonth = probe.getActualMaximum(Calendar.MONTH)
-        val names = if (maxMonth >= 12) {
-            listOf(
-                "תשרי", "חשוון", "כסלו", "טבת", "שבט", "אדר א׳", "אדר ב׳",
-                "ניסן", "אייר", "סיוון", "תמוז", "אב", "אלול"
-            )
-        } else {
-            listOf(
-                "תשרי", "חשוון", "כסלו", "טבת", "שבט", "אדר",
-                "ניסן", "אייר", "סיוון", "תמוז", "אב", "אלול"
-            )
-        }
-        return names.mapIndexed { index, name -> index to name }
+        val safeYear = year.coerceAtLeast(1)
+        // ICU keeps the actual month field IDs stable: ADAR_1 is field 5 and is
+        // absent in non-leap years, where the calendar jumps directly to ADAR (6).
+        val isLeapYear = ((7L * safeYear + 1L) % 19L) < 7L
+        val namesByMonth = mapOf(
+            0 to "תשרי",
+            1 to "חשוון",
+            2 to "כסלו",
+            3 to "טבת",
+            4 to "שבט",
+            5 to "אדר א׳",
+            6 to "אדר",
+            7 to "ניסן",
+            8 to "אייר",
+            9 to "סיוון",
+            10 to "תמוז",
+            11 to "אב",
+            12 to "אלול"
+        )
+        val monthIds = if (isLeapYear) (0..12).toList() else (0..4).toList() + (6..12).toList()
+        return monthIds.map { month -> month to namesByMonth.getValue(month) }
     }
 
     fun daysInHebrewMonth(year: Int, month: Int): Int {
