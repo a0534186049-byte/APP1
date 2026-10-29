@@ -123,7 +123,7 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             val prefs = CountdownPrefs(context)
             val now = System.currentTimeMillis()
             // Always recompute from the saved target, never decrement the previous display value.
-            val parts = CountdownMath.calculate(prefs.targetMillis(now), now)
+            val parts = CountdownMath.calculateDateOnly(prefs.targetMillis(now), now)
             val views = RemoteViews(context.packageName, R.layout.countdown_widget)
             views.setViewVisibility(R.id.widget_title, if (showTitle && prefs.showTitle) android.view.View.VISIBLE else android.view.View.GONE)
             views.setTextViewText(R.id.widget_title, prefs.eventTitle)

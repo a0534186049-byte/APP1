@@ -2,7 +2,6 @@ package com.neonevent.countdown
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.app.TimePickerDialog
 import android.app.WallpaperManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
@@ -80,7 +79,7 @@ class MainActivity : Activity() {
         settingsShown = true
         val frame = FrameLayout(this).apply { layoutDirection = View.LAYOUT_DIRECTION_RTL; setBackgroundColor(ink) }
         val background = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.FIT_XY
+            scaleType = ImageView.ScaleType.FIT_CENTER
             setImageBitmap(prefs.backgroundBitmap())
             alpha = 0.56f
         }
@@ -135,7 +134,7 @@ class MainActivity : Activity() {
             }
             val preview = ImageView(this).apply {
                 setImageBitmap(prefs.backgroundBitmapForTheme(i))
-                scaleType = ImageView.ScaleType.CENTER_CROP
+                scaleType = ImageView.ScaleType.FIT_CENTER
                 contentDescription = labels[i]
             }
             tile.addView(preview, LinearLayout.LayoutParams(-1, dp(116)))
@@ -211,7 +210,7 @@ class MainActivity : Activity() {
             }
         }
         card.addView(showTitleSwitch, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(8) })
-        val targetButton = makeButton("תאריך ושעה: " + prefs.formattedTargetDateWithTime()) { showHebrewDatePicker() }
+        val targetButton = makeButton("תאריך האירוע: " + prefs.formattedTargetDate()) { showHebrewDatePicker() }
         card.addView(targetButton, LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(8) })
         content.addView(card, cardLayoutParams())
     }
@@ -312,12 +311,12 @@ class MainActivity : Activity() {
             val firstDay = prefs.firstWeekdayOfHebrewMonth(currentYear, currentMonth)
             val maxDay = prefs.daysInHebrewMonth(currentYear, currentMonth)
             currentDay = currentDay.coerceIn(1, maxDay)
-            selectedText.text = currentDay.toString() + " ב" + (monthOptions.firstOrNull { it.first == currentMonth }?.second ?: "")
+            selectedText.text = hebrewYearLabel(currentDay) + " ב" + (monthOptions.firstOrNull { it.first == currentMonth }?.second ?: "")
             for (index in 0 until firstDay + maxDay) {
                 val rowIndex = index / 7 + 1
                 val colIndex = index % 7
                 val day = index - firstDay + 1
-                val view = if (day < 1) View(this) else makeText(day.toString(), 14f,
+                val view = if (day < 1) View(this) else makeText(hebrewYearLabel(day), 14f,
                     if (day == currentDay) Color.WHITE else ink, day == currentDay).apply {
                     gravity = Gravity.CENTER
                     background = if (day == currentDay) roundBackground(0xFF273D5B.toInt(), gold, 20) else
@@ -358,21 +357,14 @@ class MainActivity : Activity() {
             .setTitle("בחירת תאריך עברי")
             .setView(root)
             .setNegativeButton("ביטול", null)
-            .setPositiveButton("בחירת שעה", null)
+            .setPositiveButton("שמירת תאריך", null)
             .create()
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val y = currentYear
-                val m = currentMonth
-                val d = currentDay
+                prefs.setHebrewDate(currentYear, currentMonth, currentDay)
+                afterSettingsChanged()
                 dialog.dismiss()
-                TimePickerDialog(this, { _, hour, minute ->
-                    prefs.setHebrewDate(y, m, d)
-                    prefs.targetHour = hour
-                    prefs.targetMinute = minute
-                    afterSettingsChanged()
-                    if (settingsShown) buildSettingsScreen()
-                }, prefs.targetHour, prefs.targetMinute, true).show()
+                if (settingsShown) buildSettingsScreen()
             }
         }
         dialog.show()

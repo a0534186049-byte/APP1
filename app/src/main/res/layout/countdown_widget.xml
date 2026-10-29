@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:contentDescription="@string/widget_background_description"
-        android:scaleType="fitXY" />
+        android:scaleType="fitCenter" />
 
     <View
         android:layout_width="match_parent"

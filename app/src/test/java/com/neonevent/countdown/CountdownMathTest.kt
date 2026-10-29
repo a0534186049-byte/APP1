@@ -28,4 +28,38 @@ class CountdownMathTest {
         assertEquals(1L, result.seconds)
         assertEquals(1L, result.totalSeconds)
     }
+    @Test fun dateOnlyUsesLocalCalendarDaysNearMidnight() {
+        val zone = java.time.ZoneId.systemDefault()
+        val today = java.time.LocalDate.now(zone)
+        val target = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val now = today.atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
+
+        val result = CountdownMath.calculateDateOnly(target, now)
+        assertFalse(result.complete)
+        assertEquals(1L, result.days)
+    }
+
+    @Test fun dateOnlyTargetDateShowsZeroWithoutCompleting() {
+        val zone = java.time.ZoneId.systemDefault()
+        val today = java.time.LocalDate.now(zone)
+        val target = today.atStartOfDay(zone).toInstant().toEpochMilli()
+        val now = today.atTime(12, 30).atZone(zone).toInstant().toEpochMilli()
+
+        val result = CountdownMath.calculateDateOnly(target, now)
+        assertFalse(result.complete)
+        assertEquals(0L, result.days)
+        assertEquals(0L, result.hours)
+        assertEquals(0L, result.minutes)
+        assertEquals(0L, result.seconds)
+    }
+
+    @Test fun dateOnlyPastEventIsComplete() {
+        val zone = java.time.ZoneId.systemDefault()
+        val today = java.time.LocalDate.now(zone)
+        val target = today.minusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val now = today.atStartOfDay(zone).toInstant().toEpochMilli()
+
+        assertTrue(CountdownMath.calculateDateOnly(target, now).complete)
+    }
+
 }
