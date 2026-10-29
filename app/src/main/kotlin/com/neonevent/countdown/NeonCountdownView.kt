@@ -72,7 +72,6 @@ object NeonCountdownRenderer {
         paint.shader = null
         paint.style = Paint.Style.FILL
         val bitmap = prefs.backgroundBitmap()
-        // Keep the full source image visible and preserve its aspect ratio.
         val backdrop = when (theme) {
             CountdownPrefs.THEME_GRADIENT -> Color.rgb(20, 14, 47)
             CountdownPrefs.THEME_PREMIUM -> Color.rgb(5, 5, 32)
@@ -81,12 +80,18 @@ object NeonCountdownRenderer {
         canvas.drawColor(backdrop)
         if (bitmap != null && !bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) {
             paint.color = Color.WHITE
-            paint.alpha = 255
             paint.isFilterBitmap = true
-            // Scale proportionally to cover the screen. The supplied portrait artworks use
-            // the same 9:16 ratio as the target display, so they fill it without visible bars.
-            // This also prevents the narrow legacy placeholders from appearing as a small strip.
-            val scale = maxOf(w / bitmap.width.toFloat(), h / bitmap.height.toFloat())
+
+            // Fill the whole display with a low-detail color extension of the selected image.
+            // Then draw the complete original artwork, sharply and proportionally, on top.
+            // This avoids both a narrow strip in the center and the excessive crop caused by cover scaling.
+            prefs.backgroundBackdropBitmap()?.let { edgeFill ->
+                paint.alpha = 180
+                imageRect.set(0f, 0f, w, h)
+                canvas.drawBitmap(edgeFill, null, imageRect, paint)
+            }
+            paint.alpha = 255
+            val scale = min(w / bitmap.width.toFloat(), h / bitmap.height.toFloat())
             val drawW = bitmap.width * scale
             val drawH = bitmap.height * scale
             imageRect.set((w - drawW) / 2f, (h - drawH) / 2f,
@@ -125,8 +130,8 @@ object NeonCountdownRenderer {
         val selected = (0..3).filter { prefs.isUnitVisible(it) }
         val side = w * 0.045f
         val gap = w * 0.025f
-        val dayHeight = min(h * 0.115f, w * 0.31f).coerceAtLeast(64f)
-        val otherHeight = min(h * 0.105f, w * 0.235f).coerceAtLeast(58f)
+        val dayHeight = min(h * 0.09f, w * 0.24f).coerceAtLeast(48f)
+        val otherHeight = min(h * 0.075f, w * 0.19f).coerceAtLeast(44f)
         val corner = min(w * 0.035f, 24f)
 
         fun drawBox(index: Int, x: Float, top: Float, boxWidth: Float, boxHeight: Float) {
@@ -186,13 +191,13 @@ object NeonCountdownRenderer {
             drawCenteredRtlText(canvas, labels[index], x + boxWidth / 2f, top + boxHeight * 0.82f, boxWidth * 0.94f, paint, 1)
         }
 
-        val dayTop = h * 0.275f
+        val dayTop = h * 0.265f
         if (selected.contains(0)) {
-            val dayWidth = min(w * 0.42f, dayHeight * 1.42f)
+            val dayWidth = min(w * 0.34f, dayHeight * 1.34f)
             drawBox(0, centerX - dayWidth / 2f, dayTop, dayWidth, dayHeight)
         }
         val lower = selected.filter { it in 1..3 }.asReversed() // seconds left, hours right in RTL
-        val lowerTop = if (selected.contains(0)) dayTop + dayHeight + h * 0.025f else h * 0.34f
+        val lowerTop = if (selected.contains(0)) dayTop + dayHeight + h * 0.018f else h * 0.32f
         if (lower.isNotEmpty()) {
             val lowerWidth = (w - side * 2f - gap * (lower.size - 1)).coerceAtLeast(80f) / lower.size
             val totalWidth = lowerWidth * lower.size + gap * (lower.size - 1)
