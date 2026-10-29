@@ -169,7 +169,7 @@ object NeonCountdownRenderer {
             paint.color = numberColor
             paint.setShadowLayer(if (!isPersonal && (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM)) 2f else 0f,
                 0f, 1f, 0x66000000)
-            val digits = if (index == 0) valueAsHebrewDigits(values[index]) else String.format(Locale.ROOT, "%02d", values[index])
+            val digits = if (index == 0) values[index].toString() else String.format(Locale.ROOT, "%02d", values[index])
             canvas.drawText(digits, x + boxWidth / 2f, top + boxHeight * 0.55f, paint)
             paint.clearShadowLayer()
             paint.textSize = min(boxWidth * 0.19f, 21f).coerceAtLeast(14f)
@@ -208,7 +208,9 @@ object NeonCountdownRenderer {
         paint.textSize = min(w * 0.046f, h * 0.026f).coerceAtLeast(17f)
         paint.color = accent
         paint.setShadowLayer(2f, 0f, 1f, 0x99000000.toInt())
-        canvas.drawText(prefs.formattedTargetDate(), centerX, targetY, paint)
+        val eventDateLabel = "תאריך האירוע: ${prefs.formattedTargetDate()}"
+        while (paint.measureText(eventDateLabel) > w * 0.92f && paint.textSize > 12f) paint.textSize -= 1f
+        canvas.drawText(eventDateLabel, centerX, targetY, paint)
         paint.clearShadowLayer()
 
         val quote = prefs.dailyQuote(nowMillis).ifBlank {
@@ -223,41 +225,6 @@ object NeonCountdownRenderer {
         drawWrappedCenteredText(canvas, quote, centerX, quoteY, w * 0.86f, paint, 2, h * 0.027f)
         paint.clearShadowLayer()
     }
-    private fun valueAsHebrewDigits(value: Long): String {
-        var remaining = value.coerceAtLeast(0L).coerceAtMost(999L).toInt()
-        if (remaining == 0) return "0"
-        val out = StringBuilder()
-        while (remaining >= 400) { out.append('ת'); remaining -= 400 }
-        when {
-            remaining >= 300 -> { out.append('ש'); remaining -= 300 }
-            remaining >= 200 -> { out.append('ר'); remaining -= 200 }
-            remaining >= 100 -> { out.append('ק'); remaining -= 100 }
-        }
-        if (remaining == 15) { out.append("טו"); remaining = 0 }
-        else if (remaining == 16) { out.append("טז"); remaining = 0 }
-        else {
-            val tens = when {
-                remaining >= 90 -> 90; remaining >= 80 -> 80; remaining >= 70 -> 70
-                remaining >= 60 -> 60; remaining >= 50 -> 50; remaining >= 40 -> 40
-                remaining >= 30 -> 30; remaining >= 20 -> 20; remaining >= 10 -> 10
-                else -> 0
-            }
-            if (tens > 0) {
-                out.append(when (tens) {
-                    90 -> 'צ'; 80 -> 'פ'; 70 -> 'ע'; 60 -> 'ס'; 50 -> 'נ'
-                    40 -> 'מ'; 30 -> 'ל'; 20 -> 'כ'; else -> 'י'
-                })
-                remaining -= tens
-            }
-            if (remaining > 0) out.append(when (remaining) {
-                9 -> 'ט'; 8 -> 'ח'; 7 -> 'ז'; 6 -> 'ו'; 5 -> 'ה'
-                4 -> 'ד'; 3 -> 'ג'; 2 -> 'ב'; else -> 'א'
-            })
-        }
-        if (out.length == 1) out.append('׳') else out.insert(out.length - 1, '״')
-        return out.toString()
-    }
-
     private fun drawWrappedCenteredText(
         canvas: Canvas, text: String, centerX: Float, firstBaseline: Float,
         maxWidth: Float, textPaint: Paint, maxLines: Int, lineHeight: Float
