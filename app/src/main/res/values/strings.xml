@@ -6,4 +6,8 @@
     <string name="wallpaper_description">רקע חי עם ספירה לאחור לחתונה</string>
     <string name="settings_description">הגדרות הספירה לאחור</string>
     <string name="widget_background_description">הרקע שנבחר לספירה לאחור</string>
+    <string name="widget_with_title_name">ספירה לאחור עם כותרת</string>
+    <string name="widget_with_title_description">ספירה לאחור הכוללת את שם האירוע</string>
+    <string name="widget_no_title_name">ספירה לאחור ללא כותרת</string>
+    <string name="widget_no_title_description">ספירה לאחור קומפקטית ללא שם האירוע</string>
 </resources>
