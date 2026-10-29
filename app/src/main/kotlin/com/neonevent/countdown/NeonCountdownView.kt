@@ -114,7 +114,7 @@ object NeonCountdownRenderer {
             paint.color = if (isPersonal) textColor else accent
             paint.textAlign = Paint.Align.CENTER
             paint.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            paint.textSize = min(w * 0.072f, h * 0.039f).coerceAtLeast(24f)
+            paint.textSize = min(w * 0.060f, h * 0.032f).coerceAtLeast(21f)
             val title = prefs.eventTitle.ifBlank { "הרגע הגדול מתקרב" }
             while (paint.measureText(title) > w * 0.88f && paint.textSize > 14f) paint.textSize -= 1f
             if (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM || isPersonal) {
@@ -215,10 +215,10 @@ object NeonCountdownRenderer {
         }
 
         val maxLowerBottom = if (lower.isNotEmpty()) lowerTop + otherHeight else dayTop + dayHeight
-        val targetY = maxOf(maxLowerBottom + h * 0.045f, h * 0.60f).coerceAtMost(h * 0.72f)
+        val targetY = maxOf(maxLowerBottom + h * 0.035f, h * 0.54f).coerceAtMost(h * 0.68f)
         paint.textAlign = Paint.Align.CENTER
         paint.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
-        paint.textSize = min(w * 0.046f, h * 0.026f).coerceAtLeast(17f)
+        paint.textSize = min(w * 0.040f, h * 0.022f).coerceAtLeast(16f)
         paint.color = accent
         paint.setShadowLayer(2f, 0f, 1f, 0x99000000.toInt())
         val eventDateLabel = "תאריך האירוע: ${prefs.formattedTargetDate()}"
@@ -234,7 +234,7 @@ object NeonCountdownRenderer {
         paint.textAlign = Paint.Align.CENTER
         paint.textSize = min(w * 0.038f, h * 0.021f).coerceAtLeast(14f)
         paint.setShadowLayer(3f, 0f, 1f, 0xC0000000.toInt())
-        val quoteY = targetY + h * 0.055f
+        val quoteY = targetY + h * 0.048f
         drawWrappedCenteredText(canvas, quote, centerX, quoteY, w * 0.86f, paint, 2, h * 0.027f)
         paint.clearShadowLayer()
     }
