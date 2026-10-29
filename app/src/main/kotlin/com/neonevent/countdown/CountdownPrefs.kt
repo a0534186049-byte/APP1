@@ -113,9 +113,9 @@ class CountdownPrefs(context: Context) {
 
     fun formattedTargetDate(): String {
         val cal = targetCalendar()
-        val dateFormat = SimpleDateFormat("d בMMMM", hebrewLocale)
-        dateFormat.calendar = cal
-        return dateFormat.format(Date(cal.timeInMillis)) + " " + hebrewYearNumeral(cal.get(Calendar.YEAR))
+        val monthFormat = SimpleDateFormat("MMMM", hebrewLocale).apply { calendar = cal }
+        val monthName = monthFormat.format(Date(cal.timeInMillis))
+        return "${hebrewYearNumeral(cal.get(Calendar.DAY_OF_MONTH))} ב$monthName ${hebrewYearNumeral(cal.get(Calendar.YEAR))}"
     }
 
     fun formattedTargetDateWithTime(): String = formattedTargetDate()
