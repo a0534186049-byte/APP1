@@ -2,7 +2,6 @@ package com.neonevent.countdown
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.app.PendingIntent
 import android.app.WallpaperManager
 import android.appwidget.AppWidgetManager
 import android.content.ActivityNotFoundException
@@ -407,16 +406,16 @@ class MainActivity : Activity() {
             toast("המשגר במכשיר אינו תומך בהוספה ישירה. לחצו לחיצה ארוכה על מסך הבית ובחרו ווידג׳טים.")
             return
         }
-        val callback = PendingIntent.getBroadcast(
-            this,
-            if (provider == CountdownWidgetWithTitleProvider::class.java) 7101 else 7102,
-            Intent(this, provider).setAction("com.neonevent.countdown.WIDGET_PINNED"),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
         val accepted = runCatching {
-            manager.requestPinAppWidget(ComponentName(this, provider), null, callback)
+            // Android asks the current launcher to pin this provider; the launcher may
+            // show a confirmation dialog or reject in-app pinning entirely.
+            manager.requestPinAppWidget(ComponentName(this, provider), null, null)
         }.getOrDefault(false)
-        if (!accepted) toast("לא ניתן להוסיף ווידג׳ט דרך המשגר הזה. נסו דרך מסך הווידג׳טים של מסך הבית.")
+        if (accepted) {
+            toast("נשלחה בקשת הוספה. אשרו אותה בחלון של מסך הבית.")
+        } else {
+            toast("המשגר לא תומך בהוספה ישירה. לחצו לחיצה ארוכה על מסך הבית ופתחו ווידג׳טים.")
+        }
     }
 
     private fun openDreamSettings() {
