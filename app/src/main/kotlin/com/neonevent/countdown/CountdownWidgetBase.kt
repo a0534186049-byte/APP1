@@ -35,6 +35,18 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
         if (ids.isNotEmpty()) scheduleTicks(context)
     }
 
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: android.os.Bundle?
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        // Render again at the size chosen by the launcher so the widget adapts when resized.
+        updateProvider(context, appWidgetManager, intArrayOf(appWidgetId), displaysTitle())
+        scheduleTicksIfNeeded(context)
+    }
+
     override fun onEnabled(context: Context) {
         super.onEnabled(context)
         scheduleTicksIfNeeded(context)
@@ -136,7 +148,22 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_minutes_label, "דקות")
             views.setTextViewText(R.id.widget_seconds_label, "שניות")
             views.setTextViewText(R.id.widget_target_date, "תאריך האירוע: " + prefs.formattedTargetDateWithTime())
-            prefs.backgroundBitmap()?.let { views.setImageViewBitmap(R.id.widget_background, it) }
+            // A custom photo can be several thousand pixels wide. Sending its full decoded
+            // bitmap through RemoteViews can exceed Binder's transaction limit and leave the
+            // widget blank. Keep a reasonably sharp thumbnail small enough for widget transport.
+            prefs.backgroundBitmap()?.let { source ->
+                val maxDimension = maxOf(source.width, source.height).coerceAtLeast(1)
+                val scale = minOf(1f, 320f / maxDimension.toFloat())
+                val widgetBitmap = if (scale < 1f) {
+                    android.graphics.Bitmap.createScaledBitmap(
+                        source,
+                        (source.width * scale).toInt().coerceAtLeast(1),
+                        (source.height * scale).toInt().coerceAtLeast(1),
+                        true
+                    )
+                } else source
+                views.setImageViewBitmap(R.id.widget_background, widgetBitmap)
+            }
 
             val textColor = when {
                 prefs.theme == CountdownPrefs.THEME_PERSONAL && prefs.cubeStyle != CountdownPrefs.CUBES_DARK -> 0xFF182033.toInt()
