@@ -2,7 +2,9 @@ package com.neonevent.countdown
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.PendingIntent
 import android.app.WallpaperManager
+import android.appwidget.AppWidgetManager
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
@@ -256,8 +258,14 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
         card.addView(makeText("ווידג׳טים למסך הבית", 17f, Color.WHITE, true),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
-        card.addView(makeText("לחצו לחיצה ארוכה על מסך הבית, בחרו „ווידג׳טים” והוסיפו „ספירה עם כותרת” או „ספירה ללא כותרת”. העדכון מתבצע בקירוב פעם בדקה בהתאם למדיניות Android.", 14f, 0xFFCBD4E5.toInt(), false),
-            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+        card.addView(makeText("אפשר לבקש להוסיף את הווידג׳ט ישירות למסך הבית. אם המשגר אינו תומך בהוספה מהאפליקציה, הוסיפו אותו דרך מסך הווידג׳טים של מסך הבית.", 14f, 0xFFCBD4E5.toInt(), false),
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5); bottomMargin = dp(8) })
+        card.addView(makeButton("＋  הוספת ווידג׳ט עם כותרת") {
+            requestWidgetPin(CountdownWidgetWithTitleProvider::class.java)
+        }, LinearLayout.LayoutParams(-1, dp(48)))
+        card.addView(makeButton("＋  הוספת ווידג׳ט ללא כותרת") {
+            requestWidgetPin(CountdownWidgetNoTitleProvider::class.java)
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
         content.addView(card, cardLayoutParams())
     }
 
@@ -391,6 +399,24 @@ class MainActivity : Activity() {
         prefs.backgroundBitmap()
         afterSettingsChanged()
         if (settingsShown) buildSettingsScreen() else buildHomeScreen()
+    }
+
+    private fun requestWidgetPin(provider: Class<out android.content.BroadcastReceiver>) {
+        val manager = AppWidgetManager.getInstance(this)
+        if (!manager.isRequestPinAppWidgetSupported) {
+            toast("המשגר במכשיר אינו תומך בהוספה ישירה. לחצו לחיצה ארוכה על מסך הבית ובחרו ווידג׳טים.")
+            return
+        }
+        val callback = PendingIntent.getBroadcast(
+            this,
+            if (provider == CountdownWidgetWithTitleProvider::class.java) 7101 else 7102,
+            Intent(this, provider).setAction("com.neonevent.countdown.WIDGET_PINNED"),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val accepted = runCatching {
+            manager.requestPinAppWidget(ComponentName(this, provider), null, callback)
+        }.getOrDefault(false)
+        if (!accepted) toast("לא ניתן להוסיף ווידג׳ט דרך המשגר הזה. נסו דרך מסך הווידג׳טים של מסך הבית.")
     }
 
     private fun openDreamSettings() {
