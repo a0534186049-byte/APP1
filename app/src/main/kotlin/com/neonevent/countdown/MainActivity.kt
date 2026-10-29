@@ -134,7 +134,7 @@ class MainActivity : Activity() {
             }
             val preview = ImageView(this).apply {
                 setImageBitmap(prefs.backgroundBitmapForTheme(i))
-                scaleType = ImageView.ScaleType.CENTER_CROP
+                scaleType = ImageView.ScaleType.FIT_CENTER
                 contentDescription = labels[i]
             }
             tile.addView(preview, LinearLayout.LayoutParams(-1, dp(116)))
