@@ -357,7 +357,7 @@ object NeonCountdownRenderer {
         return if (fitted.isEmpty()) "…" else "$fitted…"
     }
 
-    private fun wrapToWidth(text: String, paint: Paint, maxWidth: Float): MutableList<String> {
+    internal fun wrapToWidth(text: String, paint: Paint, maxWidth: Float): MutableList<String> {
         val lines = mutableListOf<String>()
         var current = ""
         for (word in text.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }) {
