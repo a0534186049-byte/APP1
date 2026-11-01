@@ -40,7 +40,7 @@ class DailyQuoteAssetInstrumentedTest {
         val normal = JSONObject(raw).getJSONArray("daily_quotes")
         val longest = (0 until normal.length()).map { normal.getString(it) }.maxBy { it.length }
 
-        assertEquals(47, longest.length())
+        assertEquals(47, longest.length)
         assertTrue(longest.contains("—") || longest.contains(",") || longest.contains("."))
     }
 
