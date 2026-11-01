@@ -7,8 +7,10 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.Typeface
 import android.view.View
 import java.util.Locale
+import kotlin.math.floor
 import kotlin.math.min
 
 class NeonCountdownView(context: Context) : View(context) {
@@ -26,8 +28,7 @@ class NeonCountdownView(context: Context) : View(context) {
         val now = System.currentTimeMillis()
         val parts = CountdownMath.calculateDateOnly(settings.targetMillis(now), now)
         val key = settings.targetKey()
-        if (parts.complete) lastCompletionKey = key
-        else lastCompletionKey = ""
+        if (parts.complete) lastCompletionKey = key else lastCompletionKey = ""
         NeonCountdownRenderer.draw(canvas, width.toFloat(), height.toFloat(), settings, now)
         if (active) postInvalidateDelayed(1000L)
     }
@@ -43,7 +44,6 @@ object NeonCountdownRenderer {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG)
     private val box = RectF()
     private val imageRect = RectF()
-    private val locale = Locale("he", "IL")
 
     @Synchronized
     fun draw(canvas: Canvas, width: Float, height: Float, prefs: CountdownPrefs, nowMillis: Long) {
@@ -61,14 +61,12 @@ object NeonCountdownRenderer {
                 else -> Color.rgb(255, 255, 255)
             }
         }
-        // Cube colors and surrounding text colors must be controlled independently.
         val textColor = Color.WHITE
         val dayNumberColor = if (isPersonal && prefs.cubeStyle != CountdownPrefs.CUBES_DARK) Color.rgb(24, 29, 42) else Color.WHITE
 
         paint.shader = null
         paint.style = Paint.Style.FILL
         val bitmap = prefs.backgroundBitmap()
-        // Keep the full source image visible and preserve its aspect ratio.
         val backdrop = when (theme) {
             CountdownPrefs.THEME_GRADIENT -> Color.rgb(20, 14, 47)
             CountdownPrefs.THEME_PREMIUM -> Color.rgb(5, 5, 32)
@@ -92,8 +90,6 @@ object NeonCountdownRenderer {
             canvas.drawRect(0f, 0f, w, h, paint)
             paint.shader = null
         }
-
-        // A very subtle veil improves text contrast without replacing or materially changing the selected background.
         paint.color = if (theme == CountdownPrefs.THEME_GRADIENT) 0x15050A18 else 0x22040A14
         canvas.drawRect(0f, 0f, w, h, paint)
 
@@ -101,14 +97,13 @@ object NeonCountdownRenderer {
         if (prefs.showTitle) {
             paint.color = if (isPersonal) textColor else accent
             paint.textAlign = Paint.Align.CENTER
-            paint.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            paint.textSize = min(w * 0.072f, h * 0.039f).coerceAtLeast(24f)
+            paint.typeface = prefs.homeHeadingTypeface()
             val title = prefs.eventTitle.ifBlank { "הרגע הגדול מתקרב" }
-            while (paint.measureText(title) > w * 0.88f && paint.textSize > 14f) paint.textSize -= 1f
+            val titleText = fitCenteredText(paint, title, prefs.sp(34f), prefs.sp(18f), w * 0.86f)
             if (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM || isPersonal) {
                 paint.setShadowLayer(w * 0.008f, 0f, 2f, 0xA0000000.toInt())
             }
-            canvas.drawText(title, centerX, h * 0.205f, paint)
+            canvas.drawText(titleText, centerX, h * 0.205f, paint)
             paint.clearShadowLayer()
         }
 
@@ -164,18 +159,22 @@ object NeonCountdownRenderer {
             paint.style = Paint.Style.FILL
 
             paint.textAlign = Paint.Align.CENTER
-            paint.typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
-            paint.textSize = min(boxWidth * if (index == 0) 0.36f else 0.39f, boxHeight * 0.42f).coerceAtLeast(22f)
+            paint.typeface = Typeface.create(prefs.homeBodyTypeface(), Typeface.BOLD)
+            val digits = if (index == 0) valueAsHebrewDigits(values[index]) else String.format(Locale.ROOT, "%02d", values[index])
+            val numberText = fitCenteredText(paint, digits,
+                min(prefs.sp(if (index == 0) 44f else 39f), boxHeight * 0.44f),
+                prefs.sp(20f), boxWidth * 0.88f)
             paint.color = numberColor
             paint.setShadowLayer(if (!isPersonal && (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM)) 2f else 0f,
                 0f, 1f, 0x66000000)
-            val digits = if (index == 0) valueAsHebrewDigits(values[index]) else String.format(Locale.ROOT, "%02d", values[index])
-            canvas.drawText(digits, x + boxWidth / 2f, top + boxHeight * 0.55f, paint)
+            canvas.drawText(numberText, x + boxWidth / 2f, top + boxHeight * 0.55f, paint)
             paint.clearShadowLayer()
-            paint.textSize = min(boxWidth * 0.19f, 21f).coerceAtLeast(14f)
-            paint.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+
+            paint.typeface = prefs.homeBodyTypeface()
             paint.color = labelColor
-            canvas.drawText(labels[index], x + boxWidth / 2f, top + boxHeight * 0.82f, paint)
+            val labelText = fitCenteredText(paint, labels[index],
+                min(prefs.sp(17f), boxHeight * 0.24f), prefs.sp(13f), boxWidth * 0.90f)
+            canvas.drawText(labelText, x + boxWidth / 2f, top + boxHeight * 0.82f, paint)
         }
 
         val dayTop = h * 0.275f
@@ -183,7 +182,7 @@ object NeonCountdownRenderer {
             val dayWidth = min(w * 0.42f, dayHeight * 1.42f)
             drawBox(0, centerX - dayWidth / 2f, dayTop, dayWidth, dayHeight)
         }
-        val lower = selected.filter { it in 1..3 }.asReversed() // seconds left, hours right in RTL
+        val lower = selected.filter { it in 1..3 }.asReversed()
         val lowerTop = if (selected.contains(0)) dayTop + dayHeight + h * 0.025f else h * 0.34f
         if (lower.isNotEmpty()) {
             val lowerWidth = (w - side * 2f - gap * (lower.size - 1)).coerceAtLeast(80f) / lower.size
@@ -193,36 +192,52 @@ object NeonCountdownRenderer {
         }
         if (countdown.complete) {
             paint.textAlign = Paint.Align.CENTER
-            paint.typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
-            paint.textSize = min(w * 0.064f, h * 0.032f).coerceAtLeast(22f)
+            paint.typeface = Typeface.create(prefs.homeBodyTypeface(), Typeface.BOLD)
+            val completeText = fitCenteredText(paint, "האירוע כבר הגיע", prefs.sp(25f), prefs.sp(17f), w * 0.88f)
             paint.color = accent
             paint.setShadowLayer(3f, 0f, 2f, 0xA0000000.toInt())
-            canvas.drawText("האירוע כבר הגיע", centerX, h * 0.25f, paint)
+            canvas.drawText(completeText, centerX, h * 0.25f, paint)
             paint.clearShadowLayer()
         }
 
         val maxLowerBottom = if (lower.isNotEmpty()) lowerTop + otherHeight else dayTop + dayHeight
         val targetY = maxOf(maxLowerBottom + h * 0.045f, h * 0.60f).coerceAtMost(h * 0.72f)
         paint.textAlign = Paint.Align.CENTER
-        paint.typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
-        paint.textSize = min(w * 0.046f, h * 0.026f).coerceAtLeast(17f)
+        paint.typeface = prefs.homeBodyTypeface()
         paint.color = accent
+        val dateText = fitCenteredText(paint, prefs.formattedTargetDate(), prefs.sp(20f), prefs.sp(15f), w * 0.90f)
         paint.setShadowLayer(2f, 0f, 1f, 0x99000000.toInt())
-        canvas.drawText(prefs.formattedTargetDate(), centerX, targetY, paint)
+        canvas.drawText(dateText, centerX, targetY, paint)
         paint.clearShadowLayer()
 
         val quote = prefs.dailyQuote(nowMillis).ifBlank {
             if (countdown.complete) "הספירה הסתיימה" else "כל שנייה מקרבת את הרגע"
         }
-        paint.typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
+        paint.typeface = prefs.homeBodyTypeface()
         paint.color = Color.WHITE
         paint.textAlign = Paint.Align.CENTER
-        paint.textSize = min(w * 0.038f, h * 0.021f).coerceAtLeast(14f)
         paint.setShadowLayer(3f, 0f, 1f, 0xC0000000.toInt())
-        val quoteY = targetY + h * 0.055f
-        drawWrappedCenteredText(canvas, quote, centerX, quoteY, w * 0.86f, paint, 2, h * 0.027f)
+        val quoteY = targetY + prefs.dp(28f)
+        val availableQuoteHeight = (h - prefs.dp(16f) - quoteY).coerceAtLeast(prefs.dp(18f))
+        drawWrappedCenteredText(canvas, quote, centerX, quoteY, w * 0.90f, paint,
+            prefs.sp(18f), prefs.sp(14f), availableQuoteHeight)
         paint.clearShadowLayer()
     }
+
+    private fun fitCenteredText(
+        textPaint: Paint, text: String, preferredSize: Float, minimumSize: Float, maxWidth: Float
+    ): String {
+        textPaint.textSize = preferredSize
+        val step = maxOf(0.5f, preferredSize * 0.025f)
+        while (textPaint.measureText(text) > maxWidth && textPaint.textSize > minimumSize) {
+            textPaint.textSize = (textPaint.textSize - step).coerceAtLeast(minimumSize)
+        }
+        if (textPaint.measureText(text) <= maxWidth) return text
+        var fitted = text
+        while (fitted.isNotEmpty() && textPaint.measureText("$fitted…") > maxWidth) fitted = fitted.dropLast(1)
+        return if (fitted.isEmpty()) "" else "$fitted…"
+    }
+
     private fun valueAsHebrewDigits(value: Long): String {
         var remaining = value.coerceAtLeast(0L).coerceAtMost(999L).toInt()
         if (remaining == 0) return "0"
@@ -258,32 +273,44 @@ object NeonCountdownRenderer {
         return out.toString()
     }
 
-    private fun drawWrappedCenteredText(
-        canvas: Canvas, text: String, centerX: Float, firstBaseline: Float,
-        maxWidth: Float, textPaint: Paint, maxLines: Int, lineHeight: Float
-    ) {
-        if (text.isBlank()) return
-        val words = text.split(Regex("\\s+"))
+    private fun wrapToWidth(text: String, paint: Paint, maxWidth: Float): MutableList<String> {
         val lines = mutableListOf<String>()
         var current = ""
-        for (word in words) {
+        for (word in text.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }) {
             val candidate = if (current.isEmpty()) word else "$current $word"
-            if (current.isNotEmpty() && textPaint.measureText(candidate) > maxWidth) {
+            if (current.isNotEmpty() && paint.measureText(candidate) > maxWidth) {
                 lines += current
                 current = word
             } else current = candidate
         }
         if (current.isNotEmpty()) lines += current
-        val visible = if (lines.size <= maxLines) lines else {
-            val result = lines.take(maxLines).toMutableList()
-            var last = result.last()
-            while (last.isNotEmpty() && textPaint.measureText("$last…") > maxWidth) last = last.dropLast(1)
-            result[result.lastIndex] = "$last…"
-            result
-        }
-        visible.forEachIndexed { index, line ->
-            canvas.drawText(line, centerX, firstBaseline + index * lineHeight, textPaint)
-        }
+        return lines
     }
 
+    private fun drawWrappedCenteredText(
+        canvas: Canvas, text: String, centerX: Float, firstBaseline: Float, maxWidth: Float,
+        textPaint: Paint, preferredSize: Float, minimumSize: Float, maxHeight: Float
+    ) {
+        if (text.isBlank() || maxWidth <= 0f || maxHeight <= 0f) return
+        var size = preferredSize
+        var lines = mutableListOf<String>()
+        var lineHeight = size * 1.22f
+        var maxLines = 1
+        while (true) {
+            textPaint.textSize = size
+            lines = wrapToWidth(text, textPaint, maxWidth)
+            val metrics = textPaint.fontMetrics
+            lineHeight = maxOf(size * 1.22f, metrics.descent - metrics.ascent)
+            maxLines = floor(maxHeight / lineHeight).toInt().coerceIn(1, 4)
+            if (lines.size <= maxLines || size <= minimumSize) break
+            size = (size - maxOf(0.75f, size * 0.04f)).coerceAtLeast(minimumSize)
+        }
+        if (lines.size > maxLines) {
+            lines = lines.take(maxLines).toMutableList()
+            var last = lines.last()
+            while (last.isNotEmpty() && textPaint.measureText("$last…") > maxWidth) last = last.dropLast(1)
+            lines[lines.lastIndex] = if (last.isEmpty()) "…" else "$last…"
+        }
+        lines.forEachIndexed { index, line -> canvas.drawText(line, centerX, firstBaseline + index * lineHeight, textPaint) }
+    }
 }
