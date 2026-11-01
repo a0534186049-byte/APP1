@@ -112,11 +112,9 @@ object BackgroundEdgeFiller {
         paint.color = Color.WHITE
         canvas.drawBitmap(bitmap, null, destination, paint)
         if (hasSideBands) {
-            drawVerticalFeather(canvas, destination, profiles.left[PROFILE_SEGMENTS / 2],
-                profiles.right[PROFILE_SEGMENTS / 2], paint)
+            drawVerticalFeather(canvas, destination, profiles.left, profiles.right, paint)
         } else if (hasTopBands) {
-            drawHorizontalFeather(canvas, destination, profiles.top[PROFILE_SEGMENTS / 2],
-                profiles.bottom[PROFILE_SEGMENTS / 2], paint)
+            drawHorizontalFeather(canvas, destination, profiles.top, profiles.bottom, paint)
         }
         paint.shader = null
         paint.alpha = 255
@@ -152,44 +150,50 @@ object BackgroundEdgeFiller {
     }
 
     private fun drawVerticalFeather(
-        canvas: Canvas, destination: RectF, leftColor: Int, rightColor: Int, paint: Paint
+        canvas: Canvas, destination: RectF, leftColors: IntArray, rightColors: IntArray, paint: Paint
     ) {
         val feather = 3f
-        paint.shader = LinearGradient(
-            destination.left - feather, 0f, destination.left + feather, 0f,
-            intArrayOf(withAlpha(leftColor, 34), Color.TRANSPARENT),
-            null, Shader.TileMode.CLAMP
-        )
-        canvas.drawRect(destination.left - feather, destination.top, destination.left + feather,
-            destination.bottom, paint)
-        paint.shader = LinearGradient(
-            destination.right - feather, 0f, destination.right + feather, 0f,
-            intArrayOf(Color.TRANSPARENT, withAlpha(rightColor, 34)),
-            null, Shader.TileMode.CLAMP
-        )
-        canvas.drawRect(destination.right - feather, destination.top, destination.right + feather,
-            destination.bottom, paint)
+        val segmentHeight = destination.height() / leftColors.size
+        for (index in leftColors.indices) {
+            val y0 = destination.top + index * segmentHeight
+            val y1 = if (index == leftColors.lastIndex) destination.bottom else y0 + segmentHeight + 0.5f
+            paint.shader = LinearGradient(
+                destination.left - feather, 0f, destination.left + feather, 0f,
+                intArrayOf(withAlpha(leftColors[index], 34), Color.TRANSPARENT),
+                null, Shader.TileMode.CLAMP
+            )
+            canvas.drawRect(destination.left - feather, y0, destination.left + feather, y1, paint)
+            paint.shader = LinearGradient(
+                destination.right - feather, 0f, destination.right + feather, 0f,
+                intArrayOf(Color.TRANSPARENT, withAlpha(rightColors[index], 34)),
+                null, Shader.TileMode.CLAMP
+            )
+            canvas.drawRect(destination.right - feather, y0, destination.right + feather, y1, paint)
+        }
         paint.shader = null
     }
 
     private fun drawHorizontalFeather(
-        canvas: Canvas, destination: RectF, topColor: Int, bottomColor: Int, paint: Paint
+        canvas: Canvas, destination: RectF, topColors: IntArray, bottomColors: IntArray, paint: Paint
     ) {
         val feather = 3f
-        paint.shader = LinearGradient(
-            0f, destination.top - feather, 0f, destination.top + feather,
-            intArrayOf(withAlpha(topColor, 34), Color.TRANSPARENT),
-            null, Shader.TileMode.CLAMP
-        )
-        canvas.drawRect(destination.left, destination.top - feather, destination.right,
-            destination.top + feather, paint)
-        paint.shader = LinearGradient(
-            0f, destination.bottom - feather, 0f, destination.bottom + feather,
-            intArrayOf(Color.TRANSPARENT, withAlpha(bottomColor, 34)),
-            null, Shader.TileMode.CLAMP
-        )
-        canvas.drawRect(destination.left, destination.bottom - feather, destination.right,
-            destination.bottom + feather, paint)
+        val segmentWidth = destination.width() / topColors.size
+        for (index in topColors.indices) {
+            val x0 = destination.left + index * segmentWidth
+            val x1 = if (index == topColors.lastIndex) destination.right else x0 + segmentWidth + 0.5f
+            paint.shader = LinearGradient(
+                0f, destination.top - feather, 0f, destination.top + feather,
+                intArrayOf(withAlpha(topColors[index], 34), Color.TRANSPARENT),
+                null, Shader.TileMode.CLAMP
+            )
+            canvas.drawRect(x0, destination.top - feather, x1, destination.top + feather, paint)
+            paint.shader = LinearGradient(
+                0f, destination.bottom - feather, 0f, destination.bottom + feather,
+                intArrayOf(Color.TRANSPARENT, withAlpha(bottomColors[index], 34)),
+                null, Shader.TileMode.CLAMP
+            )
+            canvas.drawRect(x0, destination.bottom - feather, x1, destination.bottom + feather, paint)
+        }
         paint.shader = null
     }
 
