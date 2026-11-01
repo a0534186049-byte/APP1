@@ -99,19 +99,24 @@ object BackgroundEdgeFiller {
         paint.alpha = 255
         paint.isFilterBitmap = true
 
-        if (left > 0.5f) {
+        val hasSideBands = left > 0.5f
+        val hasTopBands = top > 0.5f
+        if (hasSideBands) {
             drawVerticalBands(canvas, 0f, left, top, bottom, profiles.left, paint)
             drawVerticalBands(canvas, right, width, top, bottom, profiles.right, paint)
-            drawVerticalFeather(canvas, destination, profiles.left[PROFILE_SEGMENTS / 2],
-                profiles.right[PROFILE_SEGMENTS / 2], paint)
-        } else if (top > 0.5f) {
+        } else if (hasTopBands) {
             drawHorizontalBands(canvas, left, right, 0f, top, profiles.top, paint)
             drawHorizontalBands(canvas, left, right, bottom, height, profiles.bottom, paint)
-            drawHorizontalFeather(canvas, destination, profiles.top[PROFILE_SEGMENTS / 2],
-                profiles.bottom[PROFILE_SEGMENTS / 2], paint)
         }
 
         canvas.drawBitmap(bitmap, null, destination, paint)
+        if (hasSideBands) {
+            drawVerticalFeather(canvas, destination, profiles.left[PROFILE_SEGMENTS / 2],
+                profiles.right[PROFILE_SEGMENTS / 2], paint)
+        } else if (hasTopBands) {
+            drawHorizontalFeather(canvas, destination, profiles.top[PROFILE_SEGMENTS / 2],
+                profiles.bottom[PROFILE_SEGMENTS / 2], paint)
+        }
         paint.shader = null
         paint.alpha = 255
         paint.isFilterBitmap = true
