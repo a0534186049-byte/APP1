@@ -6,12 +6,13 @@ import android.test.InstrumentationTestCase
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
-import java.util.TimeZone
+import android.icu.util.TimeZone as IcuTimeZone
+import java.util.TimeZone as JavaTimeZone
 
 class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
     private val locale = Locale("he", "IL")
 
-    private fun makeHebrewCalendar(year: Int, month: Int, day: Int, zone: TimeZone): HebrewCalendar {
+    private fun makeHebrewCalendar(year: Int, month: Int, day: Int, zone: IcuTimeZone): HebrewCalendar {
         return HebrewCalendar(zone, locale).apply {
             clear()
             set(Calendar.YEAR, year)
@@ -41,7 +42,7 @@ class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
 
     fun testHeshvanAndKislevDayThirtyOnlyWhenIcuAllowsIt() {
         val prefs = CountdownPrefs(instrumentation.targetContext)
-        val zone = TimeZone.getDefault()
+        val zone = IcuTimeZone.getDefault()
         for (year in 5770..5800) {
             for (month in listOf(CountdownPrefs.HESHVAN, CountdownPrefs.KISLEV)) {
                 val calendar = makeHebrewCalendar(year, month, 1, zone)
@@ -56,9 +57,10 @@ class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
     }
 
     fun testTenHebrewDatesRoundTripThroughLocalCivilDate() {
-        val previousZone = TimeZone.getDefault()
-        val zone = TimeZone.getTimeZone("Asia/Jerusalem")
-        TimeZone.setDefault(zone)
+        val previousZone = JavaTimeZone.getDefault()
+        val javaZone = JavaTimeZone.getTimeZone("Asia/Jerusalem")
+        val zone = IcuTimeZone.getTimeZone("Asia/Jerusalem")
+        JavaTimeZone.setDefault(javaZone)
         try {
         val zoneId = ZoneId.of("Asia/Jerusalem")
         val samples = listOf(
@@ -85,7 +87,7 @@ class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
             assertEquals("day after round trip for $year/$month/$day", day, roundTrip.get(Calendar.DAY_OF_MONTH))
         }
         } finally {
-            TimeZone.setDefault(previousZone)
+            JavaTimeZone.setDefault(previousZone)
         }
     }
 

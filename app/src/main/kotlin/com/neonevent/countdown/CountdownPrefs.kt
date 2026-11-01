@@ -10,7 +10,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
-import java.util.TimeZone
+import android.icu.util.TimeZone
 
 class CountdownPrefs(context: Context) {
     private val appContext = context.applicationContext
