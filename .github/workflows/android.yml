@@ -10,13 +10,14 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-apk-${{ github.ref }}
+  group: android-apk-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
   build:
     name: Test and build APKs
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -88,7 +89,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: gradle --no-daemon connectedDebugAndroidTest
+          script: timeout 15m gradle --no-daemon connectedDebugAndroidTest
 
       - name: Verify APKs and enforce 30 MB limit
         shell: bash
