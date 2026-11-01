@@ -55,7 +55,7 @@ class CountdownPrefs(context: Context) {
         const val ELUL = 12
 
         val themeNames = listOf("יוקרה בזהב", "מעבר צבעים מודרני", "תלת־ממד פרימיום")
-        val cubeNames = listOf("כהה", "בהיר", "זכוכית חלבית")
+        val cubeNames = listOf("כהה", "בהיר", "זכוכית")
         private val hebrewLocale = Locale("he", "IL")
     }
 

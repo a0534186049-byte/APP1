@@ -195,6 +195,14 @@ object NeonCountdownRenderer {
         }
 
         if (countdown.complete) {
+            if (isPersonal) {
+                PersonalTextContrast.drawForRegion(
+                    canvas, bitmap, w, h,
+                    RectF(w * 0.06f, h * 0.245f - prefs.sp(25f),
+                        w * 0.94f, h * 0.245f + prefs.sp(8f)),
+                    paint
+                )
+            }
             paint.textAlign = Paint.Align.CENTER
             paint.typeface = Typeface.create(prefs.homeBodyTypeface(), Typeface.BOLD)
             val completeText = fitCenteredText(paint, "האירוע כבר הגיע", prefs.sp(25f), prefs.sp(17f), w * 0.88f)
