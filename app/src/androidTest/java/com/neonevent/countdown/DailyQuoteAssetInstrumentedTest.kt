@@ -1,5 +1,6 @@
 package com.neonevent.countdown
 
+import android.graphics.Paint
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.json.JSONObject
@@ -9,6 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.time.LocalDate
+import kotlin.math.floor
 
 @RunWith(AndroidJUnit4::class)
 class DailyQuoteAssetInstrumentedTest {
@@ -73,5 +75,43 @@ class DailyQuoteAssetInstrumentedTest {
     @Test fun aBlankResultIsNotReplacedWithAnInventedFallback() {
         assertEquals("", DailyQuoteProvider.selectQuote(LocalDate.of(2026, 11, 1), null, emptyList(), emptyMap()))
         assertFalse(DailyQuoteProvider.parseJson("{") != null)
+    }
+
+    @Test fun theLongestQuoteFitsWithoutDroppingWordsOnPortraitPhoneGeometry() {
+        val raw = context.assets.open("daily_quotes_200_he.json")
+            .bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val normal = JSONObject(raw).getJSONArray("daily_quotes")
+        val longest = (0 until normal.length()).map { normal.getString(it) }.maxBy { it.length() }
+
+        val metrics = context.resources.displayMetrics
+        val geometry = HomeScreenGeometryCalculator.calculate(
+            widthPx = 1080f,
+            heightPx = 2400f,
+            density = metrics.density,
+            scaledDensity = metrics.scaledDensity,
+            showDays = true,
+            lowerCount = 3
+        )
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = context.resources.getFont(R.font.heebo)
+            textAlign = Paint.Align.CENTER
+        }
+        var size = 18f * metrics.scaledDensity
+        val minimumSize = 14f * metrics.scaledDensity
+        var lines = emptyList<String>()
+        var maxLines = 1
+        while (true) {
+            paint.textSize = size
+            lines = NeonCountdownRenderer.wrapToWidth(longest, paint, 1080f * 0.90f)
+            val fontMetrics = paint.fontMetrics
+            val lineHeight = maxOf(size * 1.22f, fontMetrics.descent - fontMetrics.ascent)
+            maxLines = floor(geometry.quoteMaxHeight / lineHeight).toInt().coerceIn(1, 5)
+            if (lines.size <= maxLines || size <= minimumSize) break
+            size = (size - maxOf(0.75f, size * 0.04f)).coerceAtLeast(minimumSize)
+        }
+
+        assertEquals(47, longest.length)
+        assertTrue("Quote requires ${lines.size} lines but only ${maxLines} fit", lines.size <= maxLines)
+        assertEquals("The full quote must be preserved across wrapped lines", longest, lines.joinToString(" "))
     }
 }
