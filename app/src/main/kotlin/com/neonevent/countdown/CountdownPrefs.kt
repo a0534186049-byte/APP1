@@ -72,7 +72,7 @@ class CountdownPrefs(context: Context) {
         set(value) { prefs.edit().putString("personal_image_uri", value).apply() }
 
     var cubeStyle: Int
-        get() = prefs.getInt("personal_cube_style", CUBES_FROSTED).coerceIn(CUBES_DARK, CUBES_FROSTED)
+        get() = prefs.getInt("personal_cube_style", CUBES_DARK).coerceIn(CUBES_DARK, CUBES_FROSTED)
         set(value) { prefs.edit().putInt("personal_cube_style", value.coerceIn(CUBES_DARK, CUBES_FROSTED)).apply() }
 
     var targetHebrewYear: Int

@@ -57,10 +57,7 @@ object NeonCountdownRenderer {
             CountdownPrefs.THEME_GOLD -> Color.rgb(224, 185, 108)
             CountdownPrefs.THEME_GRADIENT -> Color.rgb(247, 241, 255)
             CountdownPrefs.THEME_PREMIUM -> Color.rgb(244, 210, 158)
-            else -> when (prefs.cubeStyle) {
-                CountdownPrefs.CUBES_LIGHT -> Color.rgb(28, 34, 48)
-                else -> Color.rgb(255, 255, 255)
-            }
+            else -> Color.WHITE
         }
         val textColor = Color.WHITE
         val dayNumberColor = if (isPersonal && prefs.cubeStyle != CountdownPrefs.CUBES_DARK) Color.rgb(24, 29, 42) else Color.WHITE
@@ -100,6 +97,14 @@ object NeonCountdownRenderer {
         )
 
         if (prefs.showTitle) {
+            if (isPersonal) {
+                PersonalTextContrast.drawForRegion(
+                    canvas, bitmap, w, h,
+                    RectF(w * 0.06f, geometry.titleBaseline - prefs.sp(41f),
+                        w * 0.94f, geometry.titleBaseline + prefs.sp(8f)),
+                    paint
+                )
+            }
             paint.color = if (isPersonal) textColor else accent
             paint.textAlign = Paint.Align.CENTER
             paint.typeface = prefs.homeHeadingTypeface()
@@ -199,6 +204,14 @@ object NeonCountdownRenderer {
             paint.clearShadowLayer()
         }
 
+        if (isPersonal) {
+            PersonalTextContrast.drawForRegion(
+                canvas, bitmap, w, h,
+                RectF(w * 0.06f, geometry.dateBaseline - prefs.sp(23f),
+                    w * 0.94f, geometry.dateBaseline + prefs.sp(7f)),
+                paint
+            )
+        }
         paint.textAlign = Paint.Align.CENTER
         paint.typeface = prefs.homeBodyTypeface()
         paint.color = accent
@@ -209,8 +222,14 @@ object NeonCountdownRenderer {
         canvas.drawText(dateText, centerX, geometry.dateBaseline, paint)
         paint.clearShadowLayer()
 
-        val quote = prefs.dailyQuote(nowMillis).ifBlank {
-            if (countdown.complete) "הספירה הסתיימה" else "כל שנייה מקרבת את הרגע"
+        val quote = prefs.dailyQuote(nowMillis)
+        if (isPersonal && quote.isNotBlank()) {
+            PersonalTextContrast.drawForRegion(
+                canvas, bitmap, w, h,
+                RectF(w * 0.05f, geometry.quoteBaseline - prefs.sp(22f),
+                    w * 0.95f, geometry.quoteBaseline + geometry.quoteMaxHeight + prefs.sp(5f)),
+                paint
+            )
         }
         paint.typeface = prefs.homeBodyTypeface()
         paint.color = Color.WHITE

@@ -30,6 +30,7 @@ import android.widget.TextView
 import android.widget.Toast
 
 class MainActivity : Activity() {
+    private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
     private lateinit var prefs: CountdownPrefs
     private var settingsShown = false
     private val imageRequestCode = 4902
@@ -152,21 +153,68 @@ class MainActivity : Activity() {
         if (prefs.theme == CountdownPrefs.THEME_PERSONAL) {
             card.addView(makeText("התמונה האישית פעילה. אפשר לבחור לה מראה לקוביות:", 14f, Color.WHITE, true),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
-            val styles = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val styles = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutDirection = View.LAYOUT_DIRECTION_RTL
+            }
             for (style in CountdownPrefs.CUBES_DARK..CountdownPrefs.CUBES_FROSTED) {
-                val choice = CheckBox(this).apply {
-                    text = CountdownPrefs.cubeNames[style]
-                    textSize = 15f
-                    setTextColor(Color.WHITE)
-                    buttonTintList = android.content.res.ColorStateList.valueOf(if (prefs.cubeStyle == style) gold else 0xFFCAD4E2.toInt())
-                    isChecked = prefs.cubeStyle == style
+                val colors = when (style) {
+                    CountdownPrefs.CUBES_LIGHT -> Quadruple(
+                        0xE8FFFFFF.toInt(), 0xD0FFFFFF.toInt(),
+                        0xFF182033.toInt(), 0xFF31394B.toInt()
+                    )
+                    CountdownPrefs.CUBES_FROSTED -> Quadruple(
+                        0xBFF7F8FC.toInt(), 0xDDFEFFFF.toInt(),
+                        0xFF182033.toInt(), 0xFF303849.toInt()
+                    )
+                    else -> Quadruple(
+                        0xD9151D2B.toInt(), 0xB8FFFFFF.toInt(),
+                        Color.WHITE, 0xFFE8EDF7.toInt()
+                    )
+                }
+                val fill = colors.first
+                val stroke = colors.second
+                val numberColor = colors.third
+                val labelColor = colors.fourth
+                val selected = prefs.cubeStyle == style
+                val option = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    setPadding(dp(3), dp(4), dp(3), dp(4))
+                    background = roundBackground(
+                        0x66232C40, if (selected) gold else 0x668D9AB0, 12
+                    )
                     setOnClickListener {
                         prefs.cubeStyle = style
                         afterSettingsChanged()
                         buildSettingsScreen()
                     }
                 }
-                styles.addView(choice, LinearLayout.LayoutParams(-1, dp(44)))
+                val preview = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    background = roundBackground(fill, stroke, 10)
+                    setPadding(dp(2), dp(2), dp(2), dp(2))
+                }
+                preview.addView(
+                    makeText("123", 15f, numberColor, true).apply { gravity = Gravity.CENTER },
+                    LinearLayout.LayoutParams(-1, dp(28))
+                )
+                preview.addView(
+                    makeText("ימים", 10f, labelColor, true).apply { gravity = Gravity.CENTER },
+                    LinearLayout.LayoutParams(-1, dp(20))
+                )
+                option.addView(preview, LinearLayout.LayoutParams(-1, dp(50)))
+                option.addView(
+                    makeText(CountdownPrefs.cubeNames[style], 11.5f, Color.WHITE, selected).apply {
+                        gravity = Gravity.CENTER
+                    },
+                    LinearLayout.LayoutParams(-1, dp(25))
+                )
+                styles.addView(option, LinearLayout.LayoutParams(0, dp(86), 1f).apply {
+                    if (style != CountdownPrefs.CUBES_DARK) marginStart = dp(4)
+                    if (style != CountdownPrefs.CUBES_FROSTED) marginEnd = dp(4)
+                })
             }
             card.addView(styles)
             card.addView(makeButton("חזרה לרקע מובנה") { prefs.theme = CountdownPrefs.THEME_GOLD; afterSettingsChanged(); buildSettingsScreen() },
