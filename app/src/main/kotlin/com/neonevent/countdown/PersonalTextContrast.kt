@@ -42,6 +42,19 @@ object PersonalTextContrast {
             0.0722f * linear(blue)
     }
 
+    /**
+     * Use the regional average plus a 90th-percentile safety check. This keeps
+     * mixed bright/dark photographs from leaving bright text patches unreadable.
+     */
+    fun scrimAlphaForLuminanceSamples(samples: FloatArray): Int {
+        if (samples.isEmpty()) return 0
+        val average = samples.average().toFloat()
+        val sorted = samples.copyOf().apply { sort() }
+        val percentileIndex = ((sorted.size - 1) * 0.90f).roundToInt().coerceIn(0, sorted.lastIndex)
+        val conservativeLuminance = maxOf(average, sorted[percentileIndex])
+        return scrimAlphaForAverageLuminance(conservativeLuminance)
+    }
+
     fun drawForRegion(
         canvas: Canvas,
         bitmap: Bitmap?,
@@ -63,21 +76,19 @@ object PersonalTextContrast {
         val imageLeft = (viewWidth - imageWidth) / 2f
         val imageTop = (viewHeight - imageHeight) / 2f
 
-        var totalLuminance = 0f
-        var samples = 0
+        val luminanceSamples = FloatArray(SAMPLE_COLUMNS * SAMPLE_ROWS)
+        var sampleIndex = 0
         for (row in 0 until SAMPLE_ROWS) {
             val y = region.top + (row + 0.5f) * region.height() / SAMPLE_ROWS
             val sourceY = ((y - imageTop) / scale).toInt().coerceIn(0, bitmap.height - 1)
             for (column in 0 until SAMPLE_COLUMNS) {
                 val x = region.left + (column + 0.5f) * region.width() / SAMPLE_COLUMNS
                 val sourceX = ((x - imageLeft) / scale).toInt().coerceIn(0, bitmap.width - 1)
-                totalLuminance += relativeLuminance(bitmap.getPixel(sourceX, sourceY))
-                samples++
+                luminanceSamples[sampleIndex++] = relativeLuminance(bitmap.getPixel(sourceX, sourceY))
             }
         }
 
-        val average = if (samples == 0) 0f else totalLuminance / samples
-        val alpha = scrimAlphaForAverageLuminance(average)
+        val alpha = scrimAlphaForLuminanceSamples(luminanceSamples)
         if (alpha == 0) return
 
         val dark = Color.argb(alpha, 0, 0, 0)
