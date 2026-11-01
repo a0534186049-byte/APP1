@@ -17,7 +17,7 @@ android {
         // recognizes later APKs as updates instead of treating them as the same/older build.
         versionCode = ciRunNumber?.takeIf { it > 0 } ?: 1
         versionName = ciRunNumber?.takeIf { it > 0 }?.let { "1.0.$it" } ?: "1.0.0"
-        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -65,4 +65,7 @@ android {
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test:core:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test:runner:1.7.0")
 }

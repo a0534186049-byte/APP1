@@ -2,15 +2,23 @@ package com.neonevent.countdown
 
 import android.icu.util.Calendar
 import android.icu.util.HebrewCalendar
-import android.test.InstrumentationTestCase
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
 import android.icu.util.TimeZone as IcuTimeZone
 import java.util.TimeZone as JavaTimeZone
 
-class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
+@RunWith(AndroidJUnit4::class)
+class HebrewCalendarInstrumentedTest {
     private val locale = Locale("he", "IL")
+    private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     private fun makeHebrewCalendar(year: Int, month: Int, day: Int, zone: IcuTimeZone): HebrewCalendar {
         return HebrewCalendar(zone, locale).apply {
@@ -21,8 +29,8 @@ class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
         }
     }
 
-    fun testLeapYearsExposeAdarOneAndAdarTwo() {
-        val prefs = CountdownPrefs(instrumentation.targetContext)
+    @Test fun testLeapYearsExposeAdarOneAndAdarTwo() {
+        val prefs = CountdownPrefs(context)
         assertTrue(prefs.isHebrewLeapYear(5784))
         assertTrue(prefs.isHebrewLeapYear(5787))
         assertFalse(prefs.isHebrewLeapYear(5785))
@@ -40,8 +48,8 @@ class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
         assertTrue(common5785.any { it.first == CountdownPrefs.ADAR && it.second == "אדר" })
     }
 
-    fun testHeshvanAndKislevDayThirtyOnlyWhenIcuAllowsIt() {
-        val prefs = CountdownPrefs(instrumentation.targetContext)
+    @Test fun testHeshvanAndKislevDayThirtyOnlyWhenIcuAllowsIt() {
+        val prefs = CountdownPrefs(context)
         val zone = IcuTimeZone.getDefault()
         for (year in 5770..5800) {
             for (month in listOf(CountdownPrefs.HESHVAN, CountdownPrefs.KISLEV)) {
@@ -56,7 +64,7 @@ class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
         }
     }
 
-    fun testTenHebrewDatesRoundTripThroughLocalCivilDate() {
+    @Test fun testTenHebrewDatesRoundTripThroughLocalCivilDate() {
         val previousZone = JavaTimeZone.getDefault()
         val javaZone = JavaTimeZone.getTimeZone("Asia/Jerusalem")
         val zone = IcuTimeZone.getTimeZone("Asia/Jerusalem")
@@ -91,8 +99,8 @@ class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
         }
     }
 
-    fun testHebrewDateSurvivesPreferencesReload() {
-        val context = instrumentation.targetContext
+    @Test fun testHebrewDateSurvivesPreferencesReload() {
+        val context = context
         val store = context.getSharedPreferences("event_countdown_settings", android.content.Context.MODE_PRIVATE)
         store.edit().clear().commit()
         try {
@@ -107,8 +115,8 @@ class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
         }
     }
 
-    fun testDefaultDateIsPersistedWhenNoDateWasSaved() {
-        val context = instrumentation.targetContext
+    @Test fun testDefaultDateIsPersistedWhenNoDateWasSaved() {
+        val context = context
         val store = context.getSharedPreferences("event_countdown_settings", android.content.Context.MODE_PRIVATE)
         store.edit().clear().commit()
         try {
@@ -123,8 +131,8 @@ class HebrewCalendarInstrumentedTest : InstrumentationTestCase() {
         }
     }
 
-    fun testHebrewDateFormattingUsesHebrewDayAndYearNumerals() {
-        val prefs = CountdownPrefs(instrumentation.targetContext)
+    @Test fun testHebrewDateFormattingUsesHebrewDayAndYearNumerals() {
+        val prefs = CountdownPrefs(context)
         assertEquals("ט״ו", prefs.hebrewNumber(15))
         assertEquals("ט״ז", prefs.hebrewNumber(16))
         assertEquals("ל׳", prefs.hebrewNumber(30))
