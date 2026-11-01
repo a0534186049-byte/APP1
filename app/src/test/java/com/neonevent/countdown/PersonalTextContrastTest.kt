@@ -32,4 +32,12 @@ class PersonalTextContrastTest {
         assertEquals(0f, PersonalTextContrast.relativeLuminance(0xFF000000.toInt()), 0.0001f)
         assertEquals(1f, PersonalTextContrast.relativeLuminance(0xFFFFFFFF.toInt()), 0.0001f)
     }
+
+    @Test fun mixedBrightDarkRegionUsesBrightSampleAsSafetyMargin() {
+        val samples = FloatArray(65) { index -> if (index < 32) 0f else 1f }
+        val meanOnly = PersonalTextContrast.scrimAlphaForAverageLuminance(samples.average().toFloat())
+        val protected = PersonalTextContrast.scrimAlphaForLuminanceSamples(samples)
+        assertTrue(protected > meanOnly)
+        assertTrue(protected >= 209)
+    }
 }
