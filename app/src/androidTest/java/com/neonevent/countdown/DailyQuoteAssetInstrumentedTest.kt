@@ -38,7 +38,7 @@ class DailyQuoteAssetInstrumentedTest {
         val raw = context.assets.open("daily_quotes_200_he.json")
             .bufferedReader(Charsets.UTF_8).use { it.readText() }
         val normal = JSONObject(raw).getJSONArray("daily_quotes")
-        val longest = (0 until normal.length()).map { normal.getString(it) }.maxBy { it.length() }
+        val longest = (0 until normal.length()).map { normal.getString(it) }.maxBy { it.length }
 
         assertEquals(47, longest.length())
         assertTrue(longest.contains("—") || longest.contains(",") || longest.contains("."))
@@ -81,7 +81,7 @@ class DailyQuoteAssetInstrumentedTest {
         val raw = context.assets.open("daily_quotes_200_he.json")
             .bufferedReader(Charsets.UTF_8).use { it.readText() }
         val normal = JSONObject(raw).getJSONArray("daily_quotes")
-        val longest = (0 until normal.length()).map { normal.getString(it) }.maxBy { it.length() }
+        val longest = (0 until normal.length()).map { normal.getString(it) }.maxBy { it.length }
 
         val metrics = context.resources.displayMetrics
         val geometry = HomeScreenGeometryCalculator.calculate(
