@@ -122,7 +122,7 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             if (ids.isEmpty()) return
             val prefs = CountdownPrefs(context)
             // Always recompute from the saved Hebrew date, never decrement the previous display value.
-            val parts = CountdownMath.calculateDateOnly(prefs.eventLocalDate())
+            val parts = CountdownMath.calculateDateOnly(prefs.eventLocalDate(), System.currentTimeMillis())
             val views = RemoteViews(context.packageName, R.layout.countdown_widget)
             views.setViewVisibility(R.id.widget_title, if (showTitle && prefs.showTitle) android.view.View.VISIBLE else android.view.View.GONE)
             views.setTextViewText(R.id.widget_title, prefs.eventTitle)
