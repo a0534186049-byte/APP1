@@ -284,6 +284,7 @@ object NeonCountdownRenderer {
         val fittedNumber = fitCenteredText(
             paint, number, chosenNumberSize, chosenNumberSize * 0.82f, maxWidth
         )
+        val numberTextSize = paint.textSize
         val numberMetrics = paint.fontMetrics
         val numberHeight = numberMetrics.descent - numberMetrics.ascent
 
@@ -291,6 +292,7 @@ object NeonCountdownRenderer {
         val fittedLabel = fitCenteredText(
             paint, label, chosenLabelSize, chosenLabelSize * 0.88f, maxWidth
         )
+        val labelTextSize = paint.textSize
         val labelMetrics = paint.fontMetrics
         val labelHeight = labelMetrics.descent - labelMetrics.ascent
 
@@ -300,11 +302,15 @@ object NeonCountdownRenderer {
         val numberBaseline = firstTop - numberMetrics.ascent
         val labelBaseline = firstTop + numberHeight + gap - labelMetrics.ascent
 
+        paint.typeface = Typeface.create(bodyTypeface, Typeface.BOLD)
+        paint.textSize = numberTextSize
         paint.color = numberColor
         if (shadow) paint.setShadowLayer(2f, 0f, 1f, 0x66000000)
         canvas.drawText(fittedNumber, centerX, numberBaseline, paint)
         paint.clearShadowLayer()
 
+        paint.typeface = bodyTypeface
+        paint.textSize = labelTextSize
         paint.color = labelColor
         canvas.drawText(fittedLabel, centerX, labelBaseline, paint)
     }
