@@ -15,7 +15,7 @@ import kotlin.math.min
  * the colors of its nearest edges into any unused display area.
  */
 object BackgroundEdgeFiller {
-    private const val PROFILE_SEGMENTS = 128
+    private const val PROFILE_SEGMENTS = 256
     private const val EDGE_SAMPLE_DEPTH = 5
 
     private data class EdgeProfiles(
@@ -109,6 +109,7 @@ object BackgroundEdgeFiller {
             drawHorizontalBands(canvas, left, right, bottom, height, profiles.bottom, paint)
         }
 
+        paint.color = Color.WHITE
         canvas.drawBitmap(bitmap, null, destination, paint)
         if (hasSideBands) {
             drawVerticalFeather(canvas, destination, profiles.left[PROFILE_SEGMENTS / 2],
