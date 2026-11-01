@@ -52,6 +52,13 @@ class MainActivity : Activity() {
         buildHomeScreen()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Recalculate immediately after returning from the background or system settings.
+        window.decorView.invalidate()
+        CountdownWidgetBase.updateAllWidgets(this)
+    }
+
     private fun buildHomeScreen() {
         settingsShown = false
         val frame = FrameLayout(this).apply { setBackgroundColor(ink); layoutDirection = View.LAYOUT_DIRECTION_RTL }
