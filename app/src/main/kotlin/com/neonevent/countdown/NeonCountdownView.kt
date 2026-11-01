@@ -75,15 +75,7 @@ object NeonCountdownRenderer {
         }
         canvas.drawColor(backdrop)
         if (bitmap != null && !bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) {
-            paint.color = Color.WHITE
-            paint.alpha = 255
-            paint.isFilterBitmap = true
-            val scale = min(w / bitmap.width.toFloat(), h / bitmap.height.toFloat())
-            val drawW = bitmap.width * scale
-            val drawH = bitmap.height * scale
-            imageRect.set((w - drawW) / 2f, (h - drawH) / 2f,
-                (w + drawW) / 2f, (h + drawH) / 2f)
-            canvas.drawBitmap(bitmap, null, imageRect, paint)
+            BackgroundEdgeFiller.draw(canvas, bitmap, w, h, paint)
         } else {
             paint.shader = LinearGradient(0f, 0f, w, h,
                 intArrayOf(Color.rgb(5, 9, 22), Color.rgb(18, 20, 48), Color.rgb(6, 8, 20)),
