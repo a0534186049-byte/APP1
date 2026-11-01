@@ -58,4 +58,35 @@ class CountdownMathTest {
         assertEquals(1L, CountdownMath.calculateDateOnly(eventDate, beforeRepeatedHour).days)
         assertEquals(0L, CountdownMath.calculateDateOnly(eventDate, afterRepeatedHour).days)
     }
+
+    @Test fun futureDateShowsTimeRemainingUntilLocalMidnight() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val now = Instant.parse("2026-11-01T20:29:59Z").toEpochMilli()
+        val result = CountdownMath.calculateDateOnly(
+            LocalDate.of(2026, 11, 2),
+            now,
+            zone
+        )
+
+        assertFalse(result.complete)
+        assertEquals(1L, result.days)
+        assertEquals(1L, result.hours)
+        assertEquals(30L, result.minutes)
+        assertEquals(1L, result.seconds)
+    }
+
+    @Test fun clockUnitsAreZeroOnEventDateAndEventCompletesAfterIt() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val eventDate = LocalDate.of(2026, 11, 2)
+        val onEventDate = Instant.parse("2026-11-02T10:00:00Z").toEpochMilli()
+        val nextDate = Instant.parse("2026-11-03T00:00:00Z").toEpochMilli()
+
+        val onEvent = CountdownMath.calculateDateOnly(eventDate, onEventDate, zone)
+        assertFalse(onEvent.complete)
+        assertEquals(0L, onEvent.days)
+        assertEquals(0L, onEvent.hours)
+        assertEquals(0L, onEvent.minutes)
+        assertEquals(0L, onEvent.seconds)
+        assertTrue(CountdownMath.calculateDateOnly(eventDate, nextDate, zone).complete)
+    }
 }
