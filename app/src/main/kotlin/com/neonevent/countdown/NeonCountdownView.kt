@@ -26,7 +26,7 @@ class NeonCountdownView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val now = System.currentTimeMillis()
-        val parts = CountdownMath.calculateDateOnly(settings.eventLocalDate())
+        val parts = CountdownMath.calculateDateOnly(settings.eventLocalDate(), now)
         val key = settings.targetKey()
         if (parts.complete) lastCompletionKey = key else lastCompletionKey = ""
         NeonCountdownRenderer.draw(canvas, width.toFloat(), height.toFloat(), settings, now)
@@ -95,7 +95,7 @@ object NeonCountdownRenderer {
         canvas.drawRect(0f, 0f, w, h, paint)
 
         val centerX = w / 2f
-        val countdown = CountdownMath.calculateDateOnly(prefs.eventLocalDate())
+        val countdown = CountdownMath.calculateDateOnly(prefs.eventLocalDate(), nowMillis)
         val selected = (0..3).filter { prefs.isUnitVisible(it) }
         val lower = selected.filter { it in 1..3 } // Physical order: hours left, minutes center, seconds right.
         val geometry = HomeScreenGeometryCalculator.calculate(
