@@ -62,14 +62,6 @@ class CountdownPrefs(context: Context) {
         get() = prefs.getInt("hebrew_day", defaultHebrewDate().get(Calendar.DAY_OF_MONTH)).coerceAtLeast(1)
         private set(value) { prefs.edit().putInt("hebrew_day", value).apply() }
 
-    var targetHour: Int
-        get() = prefs.getInt("target_hour", 20).coerceIn(0, 23)
-        set(value) { prefs.edit().putInt("target_hour", value.coerceIn(0, 23)).apply() }
-
-    var targetMinute: Int
-        get() = prefs.getInt("target_minute", 0).coerceIn(0, 59)
-        set(value) { prefs.edit().putInt("target_minute", value.coerceIn(0, 59)).apply() }
-
     var eventTitle: String
         get() = prefs.getString("event_title", "הרגע הגדול מתקרב") ?: "הרגע הגדול מתקרב"
         set(value) { prefs.edit().putString("event_title", value.take(70)).apply() }
@@ -153,7 +145,10 @@ class CountdownPrefs(context: Context) {
     }
 
     private fun migrateLegacySettings() {
-        if (prefs.getBoolean("hebrew_date_migrated", false)) return
+        if (prefs.getBoolean("hebrew_date_migrated", false)) {
+            clearLegacyEventTime()
+            return
+        }
         val legacyDate = prefs.getString("target_date", null)
         val cal = if (legacyDate != null) {
             runCatching {
@@ -164,14 +159,25 @@ class CountdownPrefs(context: Context) {
         } else {
             defaultHebrewDate()
         }
-        val oldIgnoreTime = prefs.getBoolean("ignore_time", false)
         prefs.edit()
             .putInt("hebrew_year", cal.get(Calendar.YEAR))
             .putInt("hebrew_month", cal.get(Calendar.MONTH))
             .putInt("hebrew_day", cal.get(Calendar.DAY_OF_MONTH))
-            .putInt("target_hour", if (oldIgnoreTime) 0 else prefs.getInt("target_hour", 20))
-            .putInt("target_minute", if (oldIgnoreTime) 0 else prefs.getInt("target_minute", 0))
+            .putInt("target_hour", 0)
+            .putInt("target_minute", 0)
             .putBoolean("hebrew_date_migrated", true)
+            .apply()
+    }
+
+    /**
+     * Older builds stored an event hour. Keep the legacy keys cleared so that
+     * an upgrade can never silently restore a previously selected event time.
+     */
+    private fun clearLegacyEventTime() {
+        if (prefs.getInt("target_hour", 0) == 0 && prefs.getInt("target_minute", 0) == 0) return
+        prefs.edit()
+            .putInt("target_hour", 0)
+            .putInt("target_minute", 0)
             .apply()
     }
 
