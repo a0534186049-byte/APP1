@@ -9,8 +9,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.icu.util.Calendar
-import android.icu.util.HebrewCalendar
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -18,23 +16,18 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
-import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.NumberPicker
 import android.widget.ScrollView
-import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
-import java.util.Locale
 
 class MainActivity : Activity() {
     private lateinit var prefs: CountdownPrefs
@@ -272,92 +265,110 @@ class MainActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(18), dp(8), dp(18), dp(4))
+            setPadding(dp(16), dp(10), dp(16), dp(8))
         }
-        root.addView(makeText("בחרו שנה, חודש ויום עבריים", 15f, ink, true))
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
-        val year = NumberPicker(this)
-        val month = Spinner(this)
-        row.addView(month, LinearLayout.LayoutParams(0, dp(54), 1f))
-        row.addView(year, LinearLayout.LayoutParams(dp(110), dp(54)))
-        root.addView(row, LinearLayout.LayoutParams(-1, -2))
-        val selectedText = makeText("", 15f, ink, true).apply { gravity = Gravity.CENTER }
-        root.addView(selectedText, LinearLayout.LayoutParams(-1, dp(34)))
-        val grid = GridLayout(this).apply { columnCount = 7; layoutDirection = View.LAYOUT_DIRECTION_RTL }
-        root.addView(grid, LinearLayout.LayoutParams(-1, -2))
+        root.addView(makeText("בחרו יום, חודש ושנה עבריים", 16f, ink, true),
+            LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+
+        val wheels = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        val dayPicker = NumberPicker(this).apply {
+            contentDescription = "יום עברי"
+            wrapSelectorWheel = true
+        }
+        val monthPicker = NumberPicker(this).apply {
+            contentDescription = "חודש עברי"
+            wrapSelectorWheel = true
+        }
+        val yearPicker = NumberPicker(this).apply {
+            contentDescription = "שנה עברית"
+            wrapSelectorWheel = false
+        }
+        wheels.addView(dayPicker, LinearLayout.LayoutParams(0, dp(176), 0.85f))
+        wheels.addView(monthPicker, LinearLayout.LayoutParams(0, dp(176), 1.2f))
+        wheels.addView(yearPicker, LinearLayout.LayoutParams(0, dp(176), 1.05f))
+        root.addView(wheels, LinearLayout.LayoutParams(-1, -2))
+
+        val preview = makeText("", 16f, ink, true).apply { gravity = Gravity.CENTER }
+        root.addView(preview, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(4) })
 
         var currentYear = prefs.targetHebrewYear
         var currentMonth = prefs.targetHebrewMonth
         var currentDay = prefs.targetHebrewDay
-        var monthOptions = prefs.monthOptions(currentYear)
-        var suppressMonth = false
-        year.minValue = (HebrewCalendar(Locale("he", "IL")).get(Calendar.YEAR) - 1).coerceAtLeast(5700)
-        year.maxValue = HebrewCalendar(Locale("he", "IL")).get(Calendar.YEAR) + 50
-        year.value = currentYear.coerceIn(year.minValue, year.maxValue)
-        year.displayedValues = (year.minValue..year.maxValue).map { hebrewYearLabel(it) }.toTypedArray()
+        var monthOptions = emptyList<Pair<Int, String>>()
+        var suppressWheelEvents = true
 
-        fun fillMonthOptions(preferred: Int) {
+        val currentHebrewYear = prefs.currentHebrewYear()
+        yearPicker.minValue = (currentHebrewYear - 1).coerceAtLeast(5700)
+        yearPicker.maxValue = currentHebrewYear + 50
+        yearPicker.displayedValues = (yearPicker.minValue..yearPicker.maxValue)
+            .map { prefs.hebrewYearLabel(it) }.toTypedArray()
+        yearPicker.value = currentYear.coerceIn(yearPicker.minValue, yearPicker.maxValue)
+        currentYear = yearPicker.value
+
+        fun updatePreview() {
+            currentDay = dayPicker.value
+            preview.text = prefs.formatHebrewDate(currentYear, currentMonth, currentDay)
+        }
+
+        fun updateDayOptions(preferredDay: Int) {
+            dayPicker.displayedValues = null
+            dayPicker.minValue = 1
+            dayPicker.maxValue = prefs.daysInHebrewMonth(currentYear, currentMonth)
+            dayPicker.displayedValues = prefs.hebrewDayOptions(currentYear, currentMonth)
+                .map { prefs.hebrewNumber(it) }.toTypedArray()
+            dayPicker.value = preferredDay.coerceIn(dayPicker.minValue, dayPicker.maxValue)
+            currentDay = dayPicker.value
+        }
+
+        fun updateMonthOptions(preferredMonth: Int) {
             monthOptions = prefs.monthOptions(currentYear)
-            val idx = monthOptions.indexOfFirst { it.first == preferred }.takeIf { it >= 0 } ?: 0
-            currentMonth = monthOptions[idx].first
-            suppressMonth = true
-            month.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, monthOptions.map { it.second })
-            month.setSelection(idx, false)
-            suppressMonth = false
+            val selectedMonth = when {
+                monthOptions.any { it.first == preferredMonth } -> preferredMonth
+                preferredMonth == CountdownPrefs.ADAR_1 ->
+                    CountdownPrefs.ADAR.takeIf { candidate -> monthOptions.any { it.first == candidate } }
+                        ?: monthOptions.first().first
+                else -> monthOptions.first().first
+            }
+            monthPicker.displayedValues = null
+            monthPicker.minValue = 0
+            monthPicker.maxValue = monthOptions.lastIndex
+            monthPicker.displayedValues = monthOptions.map { it.second }.toTypedArray()
+            monthPicker.value = monthOptions.indexOfFirst { it.first == selectedMonth }.coerceAtLeast(0)
+            currentMonth = monthOptions[monthPicker.value].first
         }
 
-        fun drawDays() {
-            grid.removeAllViews()
-            val weekdays = listOf("א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳")
-            for (column in 0..6) {
-                val label = makeText(weekdays[column], 12f, 0xFF475167.toInt(), true).apply { gravity = Gravity.CENTER }
-                grid.addView(label, GridLayout.LayoutParams(GridLayout.spec(0), GridLayout.spec(column, 1f)).apply {
-                    width = 0; height = dp(32)
-                })
-            }
-            val firstDay = prefs.firstWeekdayOfHebrewMonth(currentYear, currentMonth)
-            val maxDay = prefs.daysInHebrewMonth(currentYear, currentMonth)
-            currentDay = currentDay.coerceIn(1, maxDay)
-            selectedText.text = hebrewYearLabel(currentDay) + " ב" + (monthOptions.firstOrNull { it.first == currentMonth }?.second ?: "")
-            for (index in 0 until firstDay + maxDay) {
-                val rowIndex = index / 7 + 1
-                val colIndex = index % 7
-                val day = index - firstDay + 1
-                val view = if (day < 1) View(this) else makeText(hebrewYearLabel(day), 14f,
-                    if (day == currentDay) Color.WHITE else ink, day == currentDay).apply {
-                    gravity = Gravity.CENTER
-                    background = if (day == currentDay) roundBackground(0xFF273D5B.toInt(), gold, 20) else
-                        roundBackground(Color.WHITE, 0xFFE2E6EF.toInt(), 20)
-                    setOnClickListener {
-                        currentDay = day
-                        drawDays()
-                    }
-                }
-                grid.addView(view, GridLayout.LayoutParams(GridLayout.spec(rowIndex), GridLayout.spec(colIndex, 1f)).apply {
-                    width = 0; height = dp(39); setMargins(dp(2), dp(2), dp(2), dp(2))
-                })
-            }
-        }
+        suppressWheelEvents = true
+        updateMonthOptions(currentMonth)
+        updateDayOptions(currentDay)
+        updatePreview()
+        suppressWheelEvents = false
 
-        fillMonthOptions(currentMonth)
-        drawDays()
-        month.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (suppressMonth || position !in monthOptions.indices) return
-                currentMonth = monthOptions[position].first
-                currentDay = currentDay.coerceAtMost(prefs.daysInHebrewMonth(currentYear, currentMonth))
-                drawDays()
-            }
-        }
-        year.setOnValueChangedListener { _, _, newValue ->
-            val oldMonthName = monthOptions.firstOrNull { it.first == currentMonth }?.second
+        yearPicker.setOnValueChangedListener { _, _, newValue ->
+            if (suppressWheelEvents) return@setOnValueChangedListener
+            val oldMonth = currentMonth
+            suppressWheelEvents = true
             currentYear = newValue
-            val newOptions = prefs.monthOptions(currentYear)
-            val preferred = newOptions.firstOrNull { it.second == oldMonthName }?.first ?: currentMonth
-            fillMonthOptions(preferred)
-            currentDay = currentDay.coerceAtMost(prefs.daysInHebrewMonth(currentYear, currentMonth))
-            drawDays()
+            updateMonthOptions(oldMonth)
+            updateDayOptions(currentDay)
+            updatePreview()
+            suppressWheelEvents = false
+        }
+        monthPicker.setOnValueChangedListener { _, _, newValue ->
+            if (suppressWheelEvents || newValue !in monthOptions.indices) return@setOnValueChangedListener
+            suppressWheelEvents = true
+            currentMonth = monthOptions[newValue].first
+            updateDayOptions(currentDay)
+            updatePreview()
+            suppressWheelEvents = false
+        }
+        dayPicker.setOnValueChangedListener { _, _, newValue ->
+            if (suppressWheelEvents) return@setOnValueChangedListener
+            currentDay = newValue
+            updatePreview()
         }
 
         val dialog = AlertDialog.Builder(this)
@@ -369,9 +380,9 @@ class MainActivity : Activity() {
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 prefs.setHebrewDate(currentYear, currentMonth, currentDay)
-                afterSettingsChanged()
+                CountdownWidgetBase.updateAllWidgets(this)
                 dialog.dismiss()
-                if (settingsShown) buildSettingsScreen()
+                if (settingsShown) buildSettingsScreen() else buildHomeScreen()
             }
         }
         dialog.show()
@@ -459,27 +470,6 @@ class MainActivity : Activity() {
         cornerRadius = dp(radiusDp).toFloat()
         setColor(fill)
         setStroke(dp(1), stroke)
-    }
-
-    private fun hebrewYearLabel(year: Int): String {
-        // Display the Hebrew-calendar year in Hebrew numerals, e.g. תשפ״ז.
-        var rest = year % 1000
-        val out = StringBuilder()
-        while (rest >= 400) { out.append('ת'); rest -= 400 }
-        when {
-            rest >= 300 -> { out.append('ש'); rest -= 300 }
-            rest >= 200 -> { out.append('ר'); rest -= 200 }
-            rest >= 100 -> { out.append('ק'); rest -= 100 }
-        }
-        if (rest == 15) { out.append("טו"); rest = 0 }
-        else if (rest == 16) { out.append("טז"); rest = 0 }
-        else {
-            val tens = when { rest >= 90 -> 90; rest >= 80 -> 80; rest >= 70 -> 70; rest >= 60 -> 60; rest >= 50 -> 50; rest >= 40 -> 40; rest >= 30 -> 30; rest >= 20 -> 20; rest >= 10 -> 10; else -> 0 }
-            if (tens > 0) { out.append(when (tens) { 90 -> 'צ'; 80 -> 'פ'; 70 -> 'ע'; 60 -> 'ס'; 50 -> 'נ'; 40 -> 'מ'; 30 -> 'ל'; 20 -> 'כ'; else -> 'י' }); rest -= tens }
-            if (rest > 0) out.append(when (rest) { 9 -> 'ט'; 8 -> 'ח'; 7 -> 'ז'; 6 -> 'ו'; 5 -> 'ה'; 4 -> 'ד'; 3 -> 'ג'; 2 -> 'ב'; else -> 'א' })
-        }
-        if (out.length == 1) out.append('׳') else if (out.length > 1) out.insert(out.length - 1, '״')
-        return out.toString()
     }
 
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()

@@ -4,14 +4,13 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.icu.text.SimpleDateFormat
 import android.icu.util.Calendar
 import android.icu.util.HebrewCalendar
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 class CountdownPrefs(context: Context) {
     private val appContext = context.applicationContext
@@ -40,6 +39,21 @@ class CountdownPrefs(context: Context) {
         const val CUBES_LIGHT = 1
         const val CUBES_FROSTED = 2
 
+        // ICU HebrewCalendar month field values, in civil-year order.
+        const val TISHRI = 0
+        const val HESHVAN = 1
+        const val KISLEV = 2
+        const val TEVET = 3
+        const val SHEVAT = 4
+        const val ADAR_1 = 5
+        const val ADAR = 6
+        const val NISAN = 7
+        const val IYAR = 8
+        const val SIVAN = 9
+        const val TAMMUZ = 10
+        const val AV = 11
+        const val ELUL = 12
+
         val themeNames = listOf("יוקרה בזהב", "מעבר צבעים מודרני", "תלת־ממד פרימיום")
         val cubeNames = listOf("כהה", "בהיר", "זכוכית חלבית")
         private val hebrewLocale = Locale("he", "IL")
@@ -66,7 +80,7 @@ class CountdownPrefs(context: Context) {
         private set(value) { prefs.edit().putInt("hebrew_year", value).apply() }
 
     var targetHebrewMonth: Int
-        get() = prefs.getInt("hebrew_month", defaultHebrewDate().get(Calendar.MONTH)).coerceAtLeast(0)
+        get() = prefs.getInt("hebrew_month", defaultHebrewDate().get(Calendar.MONTH))
         private set(value) { prefs.edit().putInt("hebrew_month", value).apply() }
 
     var targetHebrewDay: Int
@@ -88,40 +102,165 @@ class CountdownPrefs(context: Context) {
     fun isUnitVisible(index: Int): Boolean = (unitsMask and (1 shl index)) != 0
 
     fun setHebrewDate(year: Int, month: Int, day: Int) {
-        val cal = hebrewCalendar(year, month, day, 0, 0)
+        val normalizedMonth = normalizeMonth(year, month)
+        val cal = hebrewCalendar(year, normalizedMonth, day)
         prefs.edit()
             .putInt("hebrew_year", cal.get(Calendar.YEAR))
             .putInt("hebrew_month", cal.get(Calendar.MONTH))
             .putInt("hebrew_day", cal.get(Calendar.DAY_OF_MONTH))
-            .putInt("target_hour", 0)
-            .putInt("target_minute", 0)
             .putBoolean("hebrew_date_migrated", true)
             .apply()
     }
 
-    fun targetCalendar(): HebrewCalendar = hebrewCalendar(
-        targetHebrewYear, targetHebrewMonth, targetHebrewDay, 0, 0
-    )
+    fun targetCalendar(): HebrewCalendar =
+        hebrewCalendar(targetHebrewYear, normalizeMonth(targetHebrewYear, targetHebrewMonth), targetHebrewDay)
 
+    /** Convert the selected Hebrew date to the device's local civil date. */
     fun eventLocalDate(): LocalDate = Instant.ofEpochMilli(targetCalendar().timeInMillis)
         .atZone(ZoneId.systemDefault()).toLocalDate()
 
     fun dailyQuote(nowMillis: Long): String =
         DailyQuoteProvider.quote(appContext, nowMillis, runCatching { eventLocalDate() }.getOrNull())
 
-    fun targetMillis(nowMillis: Long = System.currentTimeMillis()): Long =
-        runCatching { targetCalendar().timeInMillis }.getOrElse { nowMillis }
-
     fun targetKey(): String = "$targetHebrewYear|$targetHebrewMonth|$targetHebrewDay"
 
-    fun formattedTargetDate(): String {
-        val cal = targetCalendar()
-        val monthFormat = SimpleDateFormat("MMMM", hebrewLocale).apply { calendar = cal }
-        val monthName = monthFormat.format(Date(cal.timeInMillis))
-        return "${hebrewYearNumeral(cal.get(Calendar.DAY_OF_MONTH))} ב$monthName ${hebrewYearNumeral(cal.get(Calendar.YEAR))}"
+    fun formattedTargetDate(): String =
+        formatHebrewDate(targetHebrewYear, targetHebrewMonth, targetHebrewDay)
+
+    fun formatHebrewDate(year: Int, month: Int, day: Int): String {
+        val safeMonth = normalizeMonth(year, month)
+        return "${hebrewNumber(day)} ב${monthName(year, safeMonth)} ${hebrewYearLabel(year)}"
     }
 
-    fun formattedTargetDateWithTime(): String = formattedTargetDate()
+    fun currentHebrewYear(): Int = HebrewCalendar(TimeZone.getDefault(), hebrewLocale).get(Calendar.YEAR)
+
+    fun hebrewYearLabel(year: Int): String = hebrewNumber(year % 1000)
+
+    fun hebrewNumber(value: Int): String {
+        var rest = value.coerceAtLeast(0) % 1000
+        if (rest == 0) return "תתק״ס"
+        val letters = StringBuilder()
+        while (rest >= 400) { letters.append('ת'); rest -= 400 }
+        when {
+            rest >= 300 -> { letters.append('ש'); rest -= 300 }
+            rest >= 200 -> { letters.append('ר'); rest -= 200 }
+            rest >= 100 -> { letters.append('ק'); rest -= 100 }
+        }
+        when (rest) {
+            15 -> { letters.append("טו"); rest = 0 }
+            16 -> { letters.append("טז"); rest = 0 }
+        }
+        if (rest > 0) {
+            val tens = when {
+                rest >= 90 -> 90; rest >= 80 -> 80; rest >= 70 -> 70
+                rest >= 60 -> 60; rest >= 50 -> 50; rest >= 40 -> 40
+                rest >= 30 -> 30; rest >= 20 -> 20; rest >= 10 -> 10
+                else -> 0
+            }
+            if (tens > 0) {
+                letters.append(when (tens) {
+                    90 -> 'צ'; 80 -> 'פ'; 70 -> 'ע'; 60 -> 'ס'; 50 -> 'נ'
+                    40 -> 'מ'; 30 -> 'ל'; 20 -> 'כ'; else -> 'י'
+                })
+                rest -= tens
+            }
+            if (rest > 0) letters.append(when (rest) {
+                9 -> 'ט'; 8 -> 'ח'; 7 -> 'ז'; 6 -> 'ו'; 5 -> 'ה'
+                4 -> 'ד'; 3 -> 'ג'; 2 -> 'ב'; else -> 'א'
+            })
+        }
+        if (letters.length == 1) letters.append('׳')
+        else if (letters.length > 1) letters.insert(letters.length - 1, '״')
+        return letters.toString()
+    }
+
+    /**
+     * Android's public SDK hides HebrewCalendar.isLeapYear(int) as ICU-internal.
+     * Use ICU's own calculated year length instead of duplicating any calendar rule.
+     */
+    fun isHebrewLeapYear(year: Int): Boolean {
+        val cal = newHebrewCalendar()
+        cal.clear()
+        cal.set(Calendar.YEAR, year.coerceAtLeast(1))
+        cal.set(Calendar.MONTH, TISHRI)
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        return cal.getActualMaximum(Calendar.DAY_OF_YEAR) > 355
+    }
+
+    fun monthOptions(year: Int): List<Pair<Int, String>> {
+        val months = (TISHRI..ELUL).filter { it != ADAR_1 || isHebrewLeapYear(year) }
+        return months.map { month -> month to monthName(year, month) }
+    }
+
+    fun daysInHebrewMonth(year: Int, month: Int): Int {
+        val cal = hebrewCalendar(year, normalizeMonth(year, month), 1)
+        return cal.getActualMaximum(Calendar.DAY_OF_MONTH).coerceAtLeast(1)
+    }
+
+    fun hebrewDayOptions(year: Int, month: Int): List<Int> =
+        (1..daysInHebrewMonth(year, month)).toList()
+
+    private fun monthName(year: Int, month: Int): String = when (month) {
+        TISHRI -> "תשרי"
+        HESHVAN -> "חשוון"
+        KISLEV -> "כסלו"
+        TEVET -> "טבת"
+        SHEVAT -> "שבט"
+        ADAR_1 -> "אדר א׳"
+        ADAR -> if (isHebrewLeapYear(year)) "אדר ב׳" else "אדר"
+        NISAN -> "ניסן"
+        IYAR -> "אייר"
+        SIVAN -> "סיוון"
+        TAMMUZ -> "תמוז"
+        AV -> "אב"
+        ELUL -> "אלול"
+        else -> "חודש"
+    }
+
+    private fun normalizeMonth(year: Int, month: Int): Int {
+        val bounded = month.coerceIn(TISHRI, ELUL)
+        return if (bounded == ADAR_1 && !isHebrewLeapYear(year)) ADAR else bounded
+    }
+
+    private fun newHebrewCalendar(): HebrewCalendar =
+        HebrewCalendar(TimeZone.getDefault(), hebrewLocale)
+
+    private fun hebrewCalendar(year: Int, month: Int, day: Int): HebrewCalendar {
+        val cal = newHebrewCalendar()
+        cal.clear()
+        cal.set(Calendar.YEAR, year.coerceAtLeast(1))
+        cal.set(Calendar.MONTH, normalizeMonth(year, month))
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH).coerceAtLeast(1)
+        cal.set(Calendar.DAY_OF_MONTH, day.coerceIn(1, maxDay))
+        return cal
+    }
+
+    private fun defaultHebrewDate(): HebrewCalendar =
+        newHebrewCalendar().apply { add(Calendar.DAY_OF_MONTH, 30) }
+
+    private fun migrateLegacySettings() {
+        val hasCompleteHebrewDate = prefs.contains("hebrew_year") &&
+            prefs.contains("hebrew_month") && prefs.contains("hebrew_day")
+        if (hasCompleteHebrewDate) return
+
+        // One-time compatibility import for installations that still only have the
+        // former date key. Convert it immediately with ICU and persist Hebrew fields.
+        val imported = prefs.getString("target_date", null)?.let { legacy ->
+            runCatching {
+                val localDate = LocalDate.parse(legacy)
+                val instant = localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                newHebrewCalendar().apply { timeInMillis = instant }
+            }.getOrNull()
+        }
+        val date = imported ?: defaultHebrewDate()
+        prefs.edit()
+            .putInt("hebrew_year", date.get(Calendar.YEAR))
+            .putInt("hebrew_month", date.get(Calendar.MONTH))
+            .putInt("hebrew_day", date.get(Calendar.DAY_OF_MONTH))
+            .putBoolean("hebrew_date_migrated", true)
+            .apply()
+    }
 
     fun backgroundBitmap(): Bitmap? {
         val key = if (theme == THEME_PERSONAL) "personal:" + (personalImageUri ?: "") else "theme:" + theme
@@ -153,135 +292,5 @@ class CountdownPrefs(context: Context) {
         eventTitle = "הרגע הגדול מתקרב"
         showTitle = true
         unitsMask = 15
-    }
-
-    private fun migrateLegacySettings() {
-        if (prefs.getBoolean("hebrew_date_migrated", false)) {
-            clearLegacyEventTime()
-            return
-        }
-        val legacyDate = prefs.getString("target_date", null)
-        val cal = if (legacyDate != null) {
-            runCatching {
-                val d = LocalDate.parse(legacyDate)
-                val greg = java.util.GregorianCalendar(d.year, d.monthValue - 1, d.dayOfMonth)
-                HebrewCalendar(hebrewLocale).apply { timeInMillis = greg.timeInMillis }
-            }.getOrElse { defaultHebrewDate() }
-        } else {
-            defaultHebrewDate()
-        }
-        prefs.edit()
-            .putInt("hebrew_year", cal.get(Calendar.YEAR))
-            .putInt("hebrew_month", cal.get(Calendar.MONTH))
-            .putInt("hebrew_day", cal.get(Calendar.DAY_OF_MONTH))
-            .putInt("target_hour", 0)
-            .putInt("target_minute", 0)
-            .putBoolean("hebrew_date_migrated", true)
-            .apply()
-    }
-
-    /**
-     * Older builds stored an event hour. Keep the legacy keys cleared so that
-     * an upgrade can never silently restore a previously selected event time.
-     */
-    private fun clearLegacyEventTime() {
-        if (prefs.getInt("target_hour", 0) == 0 && prefs.getInt("target_minute", 0) == 0) return
-        prefs.edit()
-            .putInt("target_hour", 0)
-            .putInt("target_minute", 0)
-            .apply()
-    }
-
-    private fun defaultHebrewDate(): HebrewCalendar =
-        HebrewCalendar(hebrewLocale).apply { add(Calendar.DAY_OF_MONTH, 30) }
-
-    private fun hebrewCalendar(year: Int, month: Int, day: Int, hour: Int, minute: Int): HebrewCalendar {
-        val cal = HebrewCalendar(hebrewLocale)
-        cal.clear()
-        cal.set(Calendar.YEAR, year.coerceAtLeast(1))
-        cal.set(Calendar.MONTH, month.coerceAtLeast(0))
-        cal.set(Calendar.DAY_OF_MONTH, 1)
-        val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH).coerceAtLeast(1)
-        cal.set(Calendar.DAY_OF_MONTH, day.coerceIn(1, maxDay))
-        cal.set(Calendar.HOUR_OF_DAY, hour.coerceIn(0, 23))
-        cal.set(Calendar.MINUTE, minute.coerceIn(0, 59))
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal
-    }
-
-    fun monthOptions(year: Int): List<Pair<Int, String>> {
-        val probe = HebrewCalendar(hebrewLocale)
-        probe.clear()
-        probe.set(Calendar.YEAR, year.coerceAtLeast(1))
-        probe.set(Calendar.MONTH, 0)
-        probe.set(Calendar.DAY_OF_MONTH, 1)
-        val maxMonth = probe.getActualMaximum(Calendar.MONTH)
-        return (0..maxMonth).map { month ->
-            val cal = HebrewCalendar(hebrewLocale)
-            cal.clear()
-            cal.set(Calendar.YEAR, year.coerceAtLeast(1))
-            cal.set(Calendar.MONTH, month)
-            cal.set(Calendar.DAY_OF_MONTH, 1)
-            val monthFormat = SimpleDateFormat("MMMM", hebrewLocale).apply { calendar = cal }
-            month to monthFormat.format(Date(cal.timeInMillis))
-        }
-    }
-
-    fun daysInHebrewMonth(year: Int, month: Int): Int {
-        val cal = hebrewCalendar(year, month, 1, 0, 0)
-        return cal.getActualMaximum(Calendar.DAY_OF_MONTH).coerceAtLeast(1)
-    }
-
-    fun firstWeekdayOfHebrewMonth(year: Int, month: Int): Int {
-        val cal = hebrewCalendar(year, month, 1, 0, 0)
-        return cal.get(Calendar.DAY_OF_WEEK) - 1
-    }
-
-    private fun hebrewYearNumeral(year: Int): String {
-        val n = year % 1000
-        if (n <= 0) return year.toString()
-        var rest = n
-        val letters = StringBuilder()
-        while (rest >= 400) { letters.append('ת'); rest -= 400 }
-        when {
-            rest >= 300 -> { letters.append('ש'); rest -= 300 }
-            rest >= 200 -> { letters.append('ר'); rest -= 200 }
-            rest >= 100 -> { letters.append('ק'); rest -= 100 }
-        }
-        if (rest == 15) {
-            letters.append("טו")
-            rest = 0
-        } else if (rest == 16) {
-            letters.append("טז")
-            rest = 0
-        } else {
-            val tens = when {
-                rest >= 90 -> 90
-                rest >= 80 -> 80
-                rest >= 70 -> 70
-                rest >= 60 -> 60
-                rest >= 50 -> 50
-                rest >= 40 -> 40
-                rest >= 30 -> 30
-                rest >= 20 -> 20
-                rest >= 10 -> 10
-                else -> 0
-            }
-            if (tens > 0) {
-                letters.append(when (tens) {
-                    90 -> 'צ'; 80 -> 'פ'; 70 -> 'ע'; 60 -> 'ס'; 50 -> 'נ'; 40 -> 'מ'
-                    30 -> 'ל'; 20 -> 'כ'; else -> 'י'
-                })
-                rest -= tens
-            }
-            if (rest > 0) letters.append(when (rest) {
-                9 -> 'ט'; 8 -> 'ח'; 7 -> 'ז'; 6 -> 'ו'; 5 -> 'ה'; 4 -> 'ד'
-                3 -> 'ג'; 2 -> 'ב'; else -> 'א'
-            })
-        }
-        if (letters.length == 1) letters.append('׳')
-        else if (letters.length > 1) letters.insert(letters.length - 1, '״')
-        return letters.toString()
     }
 }

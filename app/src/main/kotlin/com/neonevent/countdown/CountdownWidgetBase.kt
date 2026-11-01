@@ -121,9 +121,8 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
         ) {
             if (ids.isEmpty()) return
             val prefs = CountdownPrefs(context)
-            val now = System.currentTimeMillis()
-            // Always recompute from the saved target, never decrement the previous display value.
-            val parts = CountdownMath.calculateDateOnly(prefs.targetMillis(now), now)
+            // Always recompute from the saved Hebrew date, never decrement the previous display value.
+            val parts = CountdownMath.calculateDateOnly(prefs.eventLocalDate())
             val views = RemoteViews(context.packageName, R.layout.countdown_widget)
             views.setViewVisibility(R.id.widget_title, if (showTitle && prefs.showTitle) android.view.View.VISIBLE else android.view.View.GONE)
             views.setTextViewText(R.id.widget_title, prefs.eventTitle)
@@ -135,7 +134,7 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_hours_label, "שעות")
             views.setTextViewText(R.id.widget_minutes_label, "דקות")
             views.setTextViewText(R.id.widget_seconds_label, "שניות")
-            views.setTextViewText(R.id.widget_target_date, prefs.formattedTargetDateWithTime())
+            views.setTextViewText(R.id.widget_target_date, prefs.formattedTargetDate())
             prefs.backgroundBitmap()?.let { views.setImageViewBitmap(R.id.widget_background, it) }
 
             val textColor = when {
