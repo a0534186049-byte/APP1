@@ -34,9 +34,12 @@ object PersonalTextContrast {
             return if (value <= 0.04045f) value / 12.92f
             else ((value + 0.055f) / 1.055f).pow(2.4f)
         }
-        return 0.2126f * linear(Color.red(color)) +
-            0.7152f * linear(Color.green(color)) +
-            0.0722f * linear(Color.blue(color))
+        val red = (color ushr 16) and 0xFF
+        val green = (color ushr 8) and 0xFF
+        val blue = color and 0xFF
+        return 0.2126f * linear(red) +
+            0.7152f * linear(green) +
+            0.0722f * linear(blue)
     }
 
     fun drawForRegion(
