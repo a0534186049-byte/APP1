@@ -10,4 +10,5 @@
     <string name="widget_with_title_description">ספירה לאחור הכוללת את שם האירוע</string>
     <string name="widget_no_title_name">ספירה לאחור ללא כותרת</string>
     <string name="widget_no_title_description">ספירה לאחור קומפקטית ללא שם האירוע</string>
+    <string name="widget_error_message">לא ניתן להציג כרגע את הספירה</string>
 </resources>

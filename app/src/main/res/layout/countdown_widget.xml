@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="#08101E"
     android:layoutDirection="rtl"
-    android:padding="4dp">
+    android:padding="2dp">
 
     <ImageView
         android:id="@+id/widget_background"
@@ -14,7 +14,8 @@
         android:contentDescription="@string/widget_background_description"
         android:scaleType="fitCenter" />
 
-    <View
+    <!-- FrameLayout is in the RemoteViews-supported view list; a plain View is not. -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#78040A16" />
@@ -24,7 +25,7 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="6dp">
+        android:padding="2dp">
 
         <TextView
             android:id="@+id/widget_title"
@@ -35,9 +36,9 @@
             android:ellipsize="end"
             android:text="@string/app_name"
             android:textColor="#FFFFFF"
-            android:textSize="15sp"
+            android:textSize="11sp"
             android:textStyle="bold"
-            android:paddingBottom="4dp" />
+            android:paddingBottom="1dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -52,13 +53,13 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:layout_margin="2dp"
+                android:layout_margin="1dp"
                 android:orientation="vertical"
                 android:gravity="center"
                 android:background="@drawable/widget_cube_gold"
-                android:padding="3dp">
-                <TextView android:id="@+id/widget_days_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="22sp" android:textStyle="bold" android:maxLines="1" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="11sp" android:autoSizeMaxTextSize="22sp" />
-                <TextView android:id="@+id/widget_days_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="ימים" android:textColor="#FFFFE8B2" android:textSize="10sp" />
+                android:padding="1dp">
+                <TextView android:id="@+id/widget_days_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
+                <TextView android:id="@+id/widget_days_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="ימים" android:textColor="#FFFFE8B2" android:textSize="8sp" />
             </LinearLayout>
 
             <LinearLayout
@@ -66,13 +67,13 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:layout_margin="2dp"
+                android:layout_margin="1dp"
                 android:orientation="vertical"
                 android:gravity="center"
                 android:background="@drawable/widget_cube_gold"
-                android:padding="3dp">
-                <TextView android:id="@+id/widget_hours_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="22sp" android:textStyle="bold" android:maxLines="1" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="11sp" android:autoSizeMaxTextSize="22sp" />
-                <TextView android:id="@+id/widget_hours_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="שעות" android:textColor="#FFFFE8B2" android:textSize="10sp" />
+                android:padding="1dp">
+                <TextView android:id="@+id/widget_hours_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
+                <TextView android:id="@+id/widget_hours_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="שעות" android:textColor="#FFFFE8B2" android:textSize="8sp" />
             </LinearLayout>
 
             <LinearLayout
@@ -80,13 +81,13 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:layout_margin="2dp"
+                android:layout_margin="1dp"
                 android:orientation="vertical"
                 android:gravity="center"
                 android:background="@drawable/widget_cube_gold"
-                android:padding="3dp">
-                <TextView android:id="@+id/widget_minutes_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="22sp" android:textStyle="bold" android:maxLines="1" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="11sp" android:autoSizeMaxTextSize="22sp" />
-                <TextView android:id="@+id/widget_minutes_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="דקות" android:textColor="#FFFFE8B2" android:textSize="10sp" />
+                android:padding="1dp">
+                <TextView android:id="@+id/widget_minutes_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
+                <TextView android:id="@+id/widget_minutes_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="דקות" android:textColor="#FFFFE8B2" android:textSize="8sp" />
             </LinearLayout>
 
             <LinearLayout
@@ -94,13 +95,13 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:layout_margin="2dp"
+                android:layout_margin="1dp"
                 android:orientation="vertical"
                 android:gravity="center"
                 android:background="@drawable/widget_cube_gold"
-                android:padding="3dp">
-                <TextView android:id="@+id/widget_seconds_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="22sp" android:textStyle="bold" android:maxLines="1" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="11sp" android:autoSizeMaxTextSize="22sp" />
-                <TextView android:id="@+id/widget_seconds_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="שניות" android:textColor="#FFFFE8B2" android:textSize="10sp" />
+                android:padding="1dp">
+                <TextView android:id="@+id/widget_seconds_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
+                <TextView android:id="@+id/widget_seconds_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="שניות" android:textColor="#FFFFE8B2" android:textSize="8sp" />
             </LinearLayout>
         </LinearLayout>
 
@@ -112,8 +113,8 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="#FFFFFF"
-            android:textSize="11sp"
-            android:paddingTop="4dp"
+            android:textSize="9sp"
+            android:paddingTop="1dp"
             android:text="תאריך היעד" />
     </LinearLayout>
 </FrameLayout>
