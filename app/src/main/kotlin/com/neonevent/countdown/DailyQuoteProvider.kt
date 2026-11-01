@@ -99,23 +99,30 @@ object DailyQuoteProvider {
                 return null
             }
 
-            // A missing or invalid special-days object must not disable normal quotes.
-            val special = mutableMapOf<Int, String>()
-            val specialJson = root.optJSONObject("special_days_remaining")
-            if (specialJson != null) {
-                val keys = specialJson.keys()
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    val day = key.toIntOrNull() ?: continue
-                    if (day < 0) continue
-                    val value = specialJson.opt(key) as? String ?: continue
-                    if (value.isNotBlank()) special[day] = value
+            // Parse optional special days independently: malformed special data must
+            // never discard an otherwise valid list of normal quotes.
+            val special = runCatching {
+                val specialJson = root.opt("special_days_remaining") as? JSONObject
+                    ?: return@runCatching emptyMap()
+                buildMap {
+                    val keys = specialJson.keys()
+                    while (keys.hasNext()) {
+                        val key = keys.next()
+                        val day = key.toIntOrNull() ?: continue
+                        if (day < 0) continue
+                        val value = specialJson.opt(key) as? String ?: continue
+                        if (value.isNotBlank()) put(day, value)
+                    }
                 }
-            } else {
+            }.onFailure { error ->
+                Log.w(TAG, "special_days_remaining is invalid; using normal quotes only", error)
+            }.getOrElse { emptyMap() }
+
+            if (root.opt("special_days_remaining") !is JSONObject) {
                 Log.w(TAG, "special_days_remaining is missing or invalid; using normal quotes only")
             }
 
-            QuoteData(normal, special.toMap())
+            QuoteData(normal, special)
         } catch (error: Exception) {
             Log.w(TAG, "Bundled quote JSON is invalid; quote hidden", error)
             null

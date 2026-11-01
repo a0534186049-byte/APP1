@@ -76,17 +76,5 @@ class DailyQuoteProviderTest {
         assertEquals("", DailyQuoteProvider.selectQuote(LocalDate.now(), null, emptyList(), emptyMap()))
     }
 
-    @Test fun malformedOrMissingDataDoesNotProduceInventedSentences() {
-        assertEquals(null, DailyQuoteProvider.parseJson("{"))
-        assertEquals(null, DailyQuoteProvider.parseJson("{\"daily_quotes\":[]}"))
-        assertEquals(null, DailyQuoteProvider.parseJson("{\"special_days_remaining\":{}}"))
-    }
 
-    @Test fun aValidNormalListSurvivesInvalidSpecialDaysData() {
-        val parsed = DailyQuoteProvider.parseJson(
-            "{\"daily_quotes\":[\"original\"],\"special_days_remaining\":[]}"
-        )
-        assertEquals(listOf("original"), parsed?.normal)
-        assertTrue(parsed?.special.isNullOrEmpty())
-    }
 }

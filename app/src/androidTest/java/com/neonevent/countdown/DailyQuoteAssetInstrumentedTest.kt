@@ -114,4 +114,18 @@ class DailyQuoteAssetInstrumentedTest {
         assertTrue("Quote requires ${lines.size} lines but only ${maxLines} fit", lines.size <= maxLines)
         assertEquals("The full quote must be preserved across wrapped lines", longest, lines.joinToString(" "))
     }
+
+    @Test fun missingOrBrokenJsonDoesNotCrashAndDoesNotShowInventedText() {
+        assertEquals(null, DailyQuoteProvider.parseJson("{"))
+        assertEquals(null, DailyQuoteProvider.parseJson("{\"daily_quotes\":[]}"))
+        assertEquals(null, DailyQuoteProvider.parseJson("{\"special_days_remaining\":{}}"))
+    }
+
+    @Test fun invalidSpecialDaysKeepsTheValidNormalQuoteList() {
+        val parsed = DailyQuoteProvider.parseJson(
+            "{\"daily_quotes\":[\"original\"],\"special_days_remaining\":[]}"
+        )
+        assertEquals(listOf("original"), parsed?.normal)
+        assertTrue(parsed?.special.isNullOrEmpty())
+    }
 }
