@@ -1,6 +1,7 @@
 package com.neonevent.countdown
 
 import android.content.Context
+import android.util.Log
 import org.json.JSONObject
 import java.time.Instant
 import java.time.LocalDate
@@ -8,66 +9,116 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 /**
- * Loads bundled quotes once; no network, account, or background service is used.
- * The normal quote index is derived from a fixed local-date reference so reopening
- * the app on the same local date never changes the quote.
+ * Loads the bundled, offline quote list once. The regular quote is stable for
+ * the entire local calendar date and is recalculated when that date changes.
  */
 object DailyQuoteProvider {
-    private data class QuoteData(
+    internal data class QuoteData(
         val normal: List<String>,
         val special: Map<Int, String>
     )
 
     @Volatile private var cache: QuoteData? = null
     @Volatile private var loadAttempted = false
-    private val referenceDate = LocalDate.of(2025, 1, 1)
+
+    private const val TAG = "DailyQuoteProvider"
+    private const val ASSET_NAME = "daily_quotes_200_he.json"
 
     fun quote(context: Context, nowMillis: Long, eventDate: LocalDate?): String {
         val data = load(context) ?: return ""
-        val zone = ZoneId.systemDefault()
-        val today = Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate()
+        val today = Instant.ofEpochMilli(nowMillis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+        return selectQuote(today, eventDate, data.normal, data.special)
+    }
+
+    /**
+     * Pure selection logic shared by unit tests and the app.
+     * Special event-day quotes take precedence, including the event day (0).
+     * Otherwise the index is based only on today's local epoch day.
+     */
+    internal fun selectQuote(
+        today: LocalDate,
+        eventDate: LocalDate?,
+        normalQuotes: List<String>,
+        specialQuotes: Map<Int, String>
+    ): String {
+        if (normalQuotes.isEmpty()) return ""
 
         if (eventDate != null) {
-            val remaining = ChronoUnit.DAYS.between(today, eventDate).toInt()
-            if (remaining >= 0) data.special[remaining]?.let { return it }
+            val remaining = ChronoUnit.DAYS.between(today, eventDate)
+            if (remaining in 0L..Int.MAX_VALUE.toLong()) {
+                specialQuotes[remaining.toInt()]?.let { special ->
+                    if (special.isNotBlank()) return special
+                }
+            }
         }
 
-        if (data.normal.isEmpty()) return ""
-        val elapsed = ChronoUnit.DAYS.between(referenceDate, today)
-        val index = Math.floorMod(elapsed, data.normal.size.toLong()).toInt()
-        return data.normal[index]
+        val index = Math.floorMod(today.toEpochDay(), normalQuotes.size.toLong()).toInt()
+        return normalQuotes[index]
     }
 
     @Synchronized
     private fun load(context: Context): QuoteData? {
         if (loadAttempted) return cache
         loadAttempted = true
-        cache = runCatching {
-            val raw = context.assets.open("daily_quotes_200_he.json")
-                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+
+        cache = try {
+            val raw = context.assets.open(ASSET_NAME)
+                .bufferedReader(Charsets.UTF_8)
+                .use { it.readText() }
+            parseJson(raw)
+        } catch (error: Exception) {
+            Log.w(TAG, "Could not read bundled quote asset '$ASSET_NAME'; quote hidden", error)
+            null
+        }
+        return cache
+    }
+
+    /**
+     * Parsing is isolated so malformed/missing data can be tested without
+     * changing the selection logic or inventing any fallback sentence.
+     */
+    internal fun parseJson(raw: String): QuoteData? {
+        return try {
             val root = JSONObject(raw)
             val quotesJson = root.optJSONArray("daily_quotes")
+            if (quotesJson == null) {
+                Log.w(TAG, "daily_quotes is missing or is not an array; quote hidden")
+                return null
+            }
+
             val normal = buildList {
-                if (quotesJson != null) {
-                    for (i in 0 until quotesJson.length()) {
-                        val value = quotesJson.optString(i, "").trim()
-                        if (value.isNotEmpty()) add(value)
-                    }
+                for (index in 0 until quotesJson.length()) {
+                    val value = quotesJson.opt(index) as? String ?: continue
+                    if (value.isNotBlank()) add(value)
                 }
             }
-            val specialJson = root.optJSONObject("special_days_remaining")
+            if (normal.isEmpty()) {
+                Log.w(TAG, "daily_quotes is empty; quote hidden")
+                return null
+            }
+
+            // A missing or invalid special-days object must not disable normal quotes.
             val special = mutableMapOf<Int, String>()
+            val specialJson = root.optJSONObject("special_days_remaining")
             if (specialJson != null) {
                 val keys = specialJson.keys()
                 while (keys.hasNext()) {
                     val key = keys.next()
-                    val value = specialJson.optString(key, "").trim()
-                    val day = key.toIntOrNull()
-                    if (day != null && day >= 0 && value.isNotEmpty()) special[day] = value
+                    val day = key.toIntOrNull() ?: continue
+                    if (day < 0) continue
+                    val value = specialJson.opt(key) as? String ?: continue
+                    if (value.isNotBlank()) special[day] = value
                 }
+            } else {
+                Log.w(TAG, "special_days_remaining is missing or invalid; using normal quotes only")
             }
-            QuoteData(normal, special)
-        }.getOrNull()
-        return cache
+
+            QuoteData(normal, special.toMap())
+        } catch (error: Exception) {
+            Log.w(TAG, "Bundled quote JSON is invalid; quote hidden", error)
+            null
+        }
     }
 }

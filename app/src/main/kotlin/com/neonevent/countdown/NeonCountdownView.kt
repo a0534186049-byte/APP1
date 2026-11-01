@@ -230,33 +230,34 @@ object NeonCountdownRenderer {
         canvas.drawText(dateText, centerX, geometry.dateBaseline, paint)
         paint.clearShadowLayer()
 
-        val quote = prefs.dailyQuote(nowMillis).ifBlank {
-            if (countdown.complete) "הספירה הסתיימה" else "כל שנייה מקרבת את הרגע"
-        }
-        if (isPersonal && quote.isNotBlank()) {
-            PersonalTextContrast.drawForRegion(
-                canvas, bitmap, w, h,
-                RectF(w * 0.05f, geometry.quoteBaseline - prefs.sp(22f),
-                    w * 0.95f, geometry.quoteBaseline + geometry.quoteMaxHeight + prefs.sp(5f)),
-                paint
+        val quote = prefs.dailyQuote(nowMillis)
+        if (quote.isNotBlank()) {
+            if (isPersonal) {
+                PersonalTextContrast.drawForRegion(
+                    canvas, bitmap, w, h,
+                    RectF(w * 0.05f, geometry.quoteBaseline - prefs.sp(22f),
+                        w * 0.95f, geometry.quoteBaseline + geometry.quoteMaxHeight + prefs.sp(5f)),
+                    paint
+                )
+            }
+            paint.typeface = prefs.homeBodyTypeface()
+            paint.color = Color.WHITE
+            paint.textAlign = Paint.Align.CENTER
+            paint.setShadowLayer(prefs.dp(3f), 0f, prefs.dp(1f), 0xC0000000.toInt())
+            drawWrappedCenteredText(
+                canvas = canvas,
+                text = quote,
+                centerX = centerX,
+                firstBaseline = geometry.quoteBaseline,
+                maxWidth = w * 0.90f,
+                textPaint = paint,
+                preferredSize = prefs.sp(18f),
+                minimumSize = prefs.sp(14f),
+                maxHeight = geometry.quoteMaxHeight
             )
+            paint.clearShadowLayer()
         }
-        paint.typeface = prefs.homeBodyTypeface()
-        paint.color = Color.WHITE
-        paint.textAlign = Paint.Align.CENTER
-        paint.setShadowLayer(prefs.dp(3f), 0f, prefs.dp(1f), 0xC0000000.toInt())
-        drawWrappedCenteredText(
-            canvas = canvas,
-            text = quote,
-            centerX = centerX,
-            firstBaseline = geometry.quoteBaseline,
-            maxWidth = w * 0.90f,
-            textPaint = paint,
-            preferredSize = prefs.sp(18f),
-            minimumSize = prefs.sp(14f),
-            maxHeight = geometry.quoteMaxHeight
-        )
-        paint.clearShadowLayer()
+
     }
 
     private fun drawCenteredPair(
