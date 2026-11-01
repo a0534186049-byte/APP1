@@ -21,6 +21,58 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+
+
+      - name: Set up Python for triptych image processing
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 6 && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate and commit lossless triptych backgrounds
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 6 && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --quiet Pillow
+
+          candidates=(
+            "טריפטיכון חלומי של טבעות ופרחים.png"
+            "טריפטיכון_חלומי_של_טבעות_ופרחים.png"
+          )
+          found=""
+          for candidate in "${candidates[@]}"; do
+            if [[ -f "$candidate" ]]; then
+              if [[ -n "$found" ]]; then
+                echo "::error::More than one source triptych file exists."
+                exit 1
+              fi
+              found="$candidate"
+            fi
+          done
+
+          if [[ -n "$found" && -f triptych.png ]]; then
+            echo "::error::Both a named source and triptych.png exist; refusing to overwrite either."
+            exit 1
+          fi
+
+          if [[ -n "$found" ]]; then
+            original_blob="$(git rev-parse "HEAD:$found")"
+            git mv -- "$found" triptych.png
+            moved_blob="$(git hash-object triptych.png)"
+            test "$original_blob" = "$moved_blob"
+            echo "Renamed source via git mv without re-upload; blob SHA remained $moved_blob."
+          fi
+
+          if [[ -f triptych.png ]]; then
+            python scripts/crop_triptych.py --source triptych.png --commit --branch "$GITHUB_HEAD_REF"
+          else
+            python scripts/crop_triptych.py --verify-only
+          fi
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -113,6 +165,141 @@ jobs:
           if grep -q 'android.permission.INTERNET' app/src/main/AndroidManifest.xml; then
             echo "Unexpected INTERNET permission"
             exit 1
+          fi
+
+      - name: Verify Preview APK matches Latest APK signer and package
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 6 && github.event.pull_request.head.repo.full_name == github.repository
+        id: preview_metadata
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          build_tools="$ANDROID_HOME/build-tools/36.0.0"
+          apksigner="$build_tools/apksigner"
+          aapt="$build_tools/aapt"
+          preview_apk="app/build/outputs/apk/release/app-release.apk"
+          latest_dir="$RUNNER_TEMP/latest-release"
+          mkdir -p "$latest_dir"
+
+          gh release download latest-apk --pattern app-release.apk --dir "$latest_dir"
+          latest_apk="$latest_dir/app-release.apk"
+          test -s "$latest_apk"
+
+          certificate_sha256() {
+            "$apksigner" verify --print-certs "$1" 2>&1 |
+              sed -nE 's/.*Signer #1 certificate SHA-256 digest: *([[:xdigit:]]+).*/\1/p' |
+              head -n 1 | tr '[:lower:]' '[:upper:]'
+          }
+
+          preview_cert="$(certificate_sha256 "$preview_apk")"
+          latest_cert="$(certificate_sha256 "$latest_apk")"
+          test -n "$preview_cert"
+          test -n "$latest_cert"
+          echo "Latest APK certificate SHA-256: $latest_cert"
+          echo "Preview APK certificate SHA-256: $preview_cert"
+          if [[ "$preview_cert" != "$latest_cert" ]]; then
+            echo "::error::Preview APK signing certificate differs from Latest APK."
+            exit 1
+          fi
+
+          package_metadata() {
+            "$aapt" dump badging "$1" |
+              sed -nE "s/^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'.*/\1|\2|\3/p" |
+              head -n 1
+          }
+          preview_meta="$(package_metadata "$preview_apk")"
+          latest_meta="$(package_metadata "$latest_apk")"
+          test -n "$preview_meta"
+          test -n "$latest_meta"
+          IFS='|' read -r preview_app preview_code preview_name <<< "$preview_meta"
+          IFS='|' read -r latest_app latest_code latest_name <<< "$latest_meta"
+          echo "Latest APK: applicationId=$latest_app versionName=$latest_name versionCode=$latest_code"
+          echo "Preview APK: applicationId=$preview_app versionName=$preview_name versionCode=$preview_code"
+          if [[ "$preview_app" != "$latest_app" ]]; then
+            echo "::error::Preview APK applicationId differs from Latest APK."
+            exit 1
+          fi
+
+          apk_size="$(stat -c '%s' "$preview_apk")"
+          apk_sha256="$(sha256sum "$preview_apk" | awk '{print $1}')"
+          build_commit="$(git rev-parse HEAD)"
+          echo "size=$apk_size" >> "$GITHUB_OUTPUT"
+          echo "sha256=$apk_sha256" >> "$GITHUB_OUTPUT"
+          echo "application_id=$preview_app" >> "$GITHUB_OUTPUT"
+          echo "version_name=$preview_name" >> "$GITHUB_OUTPUT"
+          echo "version_code=$preview_code" >> "$GITHUB_OUTPUT"
+          echo "certificate_sha256=$preview_cert" >> "$GITHUB_OUTPUT"
+          echo "build_commit=$build_commit" >> "$GITHUB_OUTPUT"
+          echo "Preview APK size: $apk_size bytes"
+          echo "Preview APK SHA-256: $apk_sha256"
+
+      - name: Publish or update the Preview APK pre-release
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 6 && github.event.pull_request.head.repo.full_name == github.repository
+        id: publish_preview
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_tag="preview-apk"
+          apk="app/build/outputs/apk/release/app-release.apk"
+          build_commit="$(git rev-parse HEAD)"
+
+          if gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release edit "$release_tag" --target "$build_commit" --title "Preview APK" \
+              --notes "Pre-release build of PR #6. Updated after every successful PR build. This release is separate from Latest APK." --prerelease
+          else
+            gh release create "$release_tag" --target "$build_commit" --title "Preview APK" \
+              --notes "Pre-release build of PR #6. Updated after every successful PR build. This release is separate from Latest APK." --prerelease
+          fi
+
+          gh release upload "$release_tag" "$apk" --clobber
+          gh release edit "$release_tag" --title "Preview APK" \
+            --notes "Automatically updated from PR #6. Build commit: $build_commit. Latest verified APK: app-release.apk." --prerelease
+
+          release_json="$(gh release view "$release_tag" --json tagName,isPrerelease,assets,url)"
+          echo "$release_json" | jq .
+          is_prerelease="$(echo "$release_json" | jq -r '.isPrerelease')"
+          test "$is_prerelease" = "true"
+          asset_size="$(echo "$release_json" | jq -r '.assets[] | select(.name == "app-release.apk") | .size' | head -n 1)"
+          test -n "$asset_size"
+          test "$asset_size" -gt 0
+
+          verify_dir="$RUNNER_TEMP/preview-release-verify"
+          mkdir -p "$verify_dir"
+          gh release download "$release_tag" --pattern app-release.apk --dir "$verify_dir"
+          uploaded_apk="$verify_dir/app-release.apk"
+          uploaded_size="$(stat -c '%s' "$uploaded_apk")"
+          uploaded_sha="$(sha256sum "$uploaded_apk" | awk '{print $1}')"
+          local_sha="$(sha256sum "$apk" | awk '{print $1}')"
+          test "$uploaded_size" = "$asset_size"
+          test "$uploaded_sha" = "$local_sha"
+
+          direct_url="https://github.com/$GITHUB_REPOSITORY/releases/download/$release_tag/app-release.apk"
+          echo "Verified Preview APK asset: app-release.apk ($uploaded_size bytes)"
+          echo "Verified Preview APK SHA-256: $uploaded_sha"
+          echo "Verified pre-release: $is_prerelease"
+          echo "Direct download URL: $direct_url"
+          echo "asset_url=$direct_url" >> "$GITHUB_OUTPUT"
+          echo "asset_size=$uploaded_size" >> "$GITHUB_OUTPUT"
+          echo "asset_sha256=$uploaded_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Remove temporary triptych source after verified Preview release
+        if: steps.publish_preview.outcome == 'success' && github.event_name == 'pull_request' && github.event.pull_request.number == 6 && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          if [[ -f triptych.png ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git rm -- triptych.png
+            git commit -m "Section 3: remove temporary triptych source after generating backgrounds"
+            git push origin "HEAD:refs/heads/$GITHUB_HEAD_REF"
+            echo "Removed temporary triptych.png after successful Preview APK verification."
+          else
+            echo "No temporary triptych.png remains."
           fi
 
       # Keep Actions artifacts as a backup, but the normal download path is the Release asset below.
