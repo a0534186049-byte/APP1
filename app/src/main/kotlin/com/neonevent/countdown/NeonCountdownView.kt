@@ -222,7 +222,9 @@ object NeonCountdownRenderer {
         canvas.drawText(dateText, centerX, geometry.dateBaseline, paint)
         paint.clearShadowLayer()
 
-        val quote = prefs.dailyQuote(nowMillis)
+        val quote = prefs.dailyQuote(nowMillis).ifBlank {
+            if (countdown.complete) "הספירה הסתיימה" else "כל שנייה מקרבת את הרגע"
+        }
         if (isPersonal && quote.isNotBlank()) {
             PersonalTextContrast.drawForRegion(
                 canvas, bitmap, w, h,
