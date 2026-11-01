@@ -18,6 +18,17 @@ class CountdownPrefs(context: Context) {
     private val prefs = appContext.getSharedPreferences("event_countdown_settings", Context.MODE_PRIVATE)
     private var cachedBitmapKey: String? = null
     private var cachedBitmap: Bitmap? = null
+    private val headingTypeface by lazy(LazyThreadSafetyMode.NONE) {
+        appContext.resources.getFont(R.font.secular_one)
+    }
+    private val bodyTypeface by lazy(LazyThreadSafetyMode.NONE) {
+        appContext.resources.getFont(R.font.heebo)
+    }
+
+    fun homeHeadingTypeface(): android.graphics.Typeface = headingTypeface
+    fun homeBodyTypeface(): android.graphics.Typeface = bodyTypeface
+    fun sp(value: Float): Float = value * appContext.resources.displayMetrics.scaledDensity
+    fun dp(value: Float): Float = value * appContext.resources.displayMetrics.density
 
     companion object {
         const val THEME_GOLD = 0
