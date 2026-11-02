@@ -38,6 +38,7 @@ class CountdownPrefs(context: Context) {
         const val CUBES_DARK = 0
         const val CUBES_LIGHT = 1
         const val CUBES_FROSTED = 2
+        const val CUBES_AUTO = 3
 
         // ICU HebrewCalendar month field values, in civil-year order.
         const val TISHRI = 0
@@ -55,7 +56,7 @@ class CountdownPrefs(context: Context) {
         const val ELUL = 12
 
         val themeNames = listOf("יוקרה בזהב", "מעבר צבעים מודרני", "תלת־ממד פרימיום")
-        val cubeNames = listOf("כהה", "בהיר", "זכוכית")
+        val cubeNames = listOf("כהה", "בהיר", "זכוכית", "ניגודי אוטומטי")
         private val hebrewLocale = Locale("he", "IL")
     }
 
@@ -72,8 +73,8 @@ class CountdownPrefs(context: Context) {
         set(value) { prefs.edit().putString("personal_image_uri", value).apply() }
 
     var cubeStyle: Int
-        get() = prefs.getInt("personal_cube_style", CUBES_DARK).coerceIn(CUBES_DARK, CUBES_FROSTED)
-        set(value) { prefs.edit().putInt("personal_cube_style", value.coerceIn(CUBES_DARK, CUBES_FROSTED)).apply() }
+        get() = prefs.getInt("personal_cube_style", CUBES_DARK).coerceIn(CUBES_DARK, CUBES_AUTO)
+        set(value) { prefs.edit().putInt("personal_cube_style", value.coerceIn(CUBES_DARK, CUBES_AUTO)).apply() }
 
     var targetHebrewYear: Int
         get() = prefs.getInt("hebrew_year", defaultHebrewDate().get(Calendar.YEAR))
@@ -286,6 +287,25 @@ class CountdownPrefs(context: Context) {
         return runCatching {
             appContext.assets.open(name).use { BitmapFactory.decodeStream(it) }
         }.getOrNull()
+    }
+
+
+    /** Returns true when the chosen personal image is bright enough for dark text. */
+    fun personalAutoContrastIsDark(): Boolean {
+        val bitmap = backgroundBitmap() ?: return false
+        if (bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) return false
+        val samples = FloatArray(65)
+        var index = 0
+        for (row in 0 until 5) {
+            val y = ((row + 0.5f) * bitmap.height / 5f).toInt().coerceIn(0, bitmap.height - 1)
+            for (column in 0 until 13) {
+                val x = ((column + 0.5f) * bitmap.width / 13f).toInt().coerceIn(0, bitmap.width - 1)
+                samples[index++] = PersonalTextContrast.relativeLuminance(bitmap.getPixel(x, y))
+            }
+        }
+        val sorted = samples.sorted()
+        val conservative = maxOf(samples.average().toFloat(), sorted[58])
+        return conservative >= 0.42f
     }
 
     fun resetEventSettings() {
