@@ -1,0 +1,68 @@
+name: Hebrew font mockup
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/font_demo/**'
+      - '.github/workflows/font-demo.yml'
+      - 'app/src/main/assets/backgrounds/gold.webp'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install tooling
+        run: python -m pip install --disable-pip-version-check pillow fonttools
+      - name: Download real Google Fonts TTFs and OFL notices
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/font-files"
+          cd "$RUNNER_TEMP/font-files"
+          curl -fsSL --retry 3 https://raw.githubusercontent.com/google/fonts/main/ofl/suezone/SuezOne-Regular.ttf -o SuezOne-Regular.ttf
+          curl -fsSL --retry 3 'https://raw.githubusercontent.com/google/fonts/main/ofl/frankruhllibre/FrankRuhlLibre%5Bwght%5D.ttf' -o FrankRuhlLibre-Variable.ttf
+          curl -fsSL --retry 3 https://raw.githubusercontent.com/google/fonts/main/ofl/davidlibre/DavidLibre-Regular.ttf -o DavidLibre-Regular.ttf
+          curl -fsSL --retry 3 https://raw.githubusercontent.com/google/fonts/main/ofl/davidlibre/DavidLibre-Medium.ttf -o DavidLibre-Medium.ttf
+          curl -fsSL --retry 3 https://raw.githubusercontent.com/google/fonts/main/ofl/bellefair/Bellefair-Regular.ttf -o Bellefair-Regular.ttf
+          for family in suezone frankruhllibre davidlibre bellefair; do
+            curl -fsSL --retry 3 "https://raw.githubusercontent.com/google/fonts/main/ofl/$family/OFL.txt" -o "OFL-$family.txt"
+          done
+          python - <<'PY'
+          from pathlib import Path
+          from fontTools.ttLib import TTFont
+          from fontTools.varLib.instancer import instantiateVariableFont
+          root=Path(".")
+          variable=TTFont(root/"FrankRuhlLibre-Variable.ttf")
+          for weight in (500,700,900):
+              instance=instantiateVariableFont(variable,{"wght":weight},inplace=False)
+              instance.save(root/f"FrankRuhlLibre-{weight}.ttf")
+              print("Static weight",weight,"created")
+          for f in root.glob("*.ttf"):
+              if f.stat().st_size < 1000: raise SystemExit(f"Invalid font file: {f}")
+          PY
+      - name: Render the three pairs on original gold.webp
+        run: |
+          python scripts/font_demo/render_font_demo.py \
+            --background app/src/main/assets/backgrounds/gold.webp \
+            --font-dir "$RUNNER_TEMP/font-files" \
+            --output-dir "$RUNNER_TEMP/font-demo-output"
+          cp "$RUNNER_TEMP/font-files"/OFL-*.txt "$RUNNER_TEMP/font-demo-output"/
+          echo "gold.webp dimensions:"
+          python -c "from PIL import Image; print(Image.open('app/src/main/assets/backgrounds/gold.webp').size)"
+          ls -lh "$RUNNER_TEMP/font-demo-output"
+      - name: Upload side-by-side mockup and each panel
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hebrew-font-pair-mockups
+          retention-days: 14
+          if-no-files-found: error
+          path: ${{ runner.temp }}/font-demo-output/*
