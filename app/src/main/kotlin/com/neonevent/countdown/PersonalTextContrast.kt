@@ -46,9 +46,9 @@ object PersonalTextContrast {
      * Use the regional average plus a 90th-percentile safety check. This keeps
      * mixed bright/dark photographs from leaving bright text patches unreadable.
      */
-    const val AUTO_DARK_TEXT = 0xFF182033.toInt()
-    const val AUTO_LIGHT_TEXT = 0xFFFFFFFF.toInt()
-    const val AUTO_GOLD_TEXT = 0xFFFFE8B2.toInt()
+    val AUTO_DARK_TEXT = 0xFF182033.toInt()
+    val AUTO_LIGHT_TEXT = Color.WHITE
+    val AUTO_GOLD_TEXT = 0xFFFFE8B2.toInt()
 
     fun recommendedTextColorForLuminanceSamples(samples: FloatArray): Int {
         if (samples.isEmpty()) return AUTO_LIGHT_TEXT
