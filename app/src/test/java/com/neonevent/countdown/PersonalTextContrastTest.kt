@@ -28,6 +28,26 @@ class PersonalTextContrastTest {
         }
     }
 
+    @Test fun automaticContrastSelectsDarkLightOrGoldForDifferentPhotos() {
+        assertEquals(
+            PersonalTextContrast.AUTO_DARK_TEXT,
+            PersonalTextContrast.recommendedTextColorForLuminanceSamples(FloatArray(65) { 0.92f })
+        )
+        assertEquals(
+            PersonalTextContrast.AUTO_GOLD_TEXT,
+            PersonalTextContrast.recommendedTextColorForLuminanceSamples(FloatArray(65) { 0.04f })
+        )
+        assertEquals(
+            PersonalTextContrast.AUTO_LIGHT_TEXT,
+            PersonalTextContrast.recommendedTextColorForLuminanceSamples(FloatArray(65) { 0.34f })
+        )
+        val colorful = FloatArray(65) { if (it % 2 == 0) 0.05f else 0.95f }
+        assertEquals(
+            PersonalTextContrast.AUTO_LIGHT_TEXT,
+            PersonalTextContrast.recommendedTextColorForLuminanceSamples(colorful)
+        )
+    }
+
     @Test fun luminanceUsesTheRelativeSrgbFormula() {
         assertEquals(0f, PersonalTextContrast.relativeLuminance(0xFF000000.toInt()), 0.0001f)
         assertEquals(1f, PersonalTextContrast.relativeLuminance(0xFFFFFFFF.toInt()), 0.0001f)
