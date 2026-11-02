@@ -78,15 +78,14 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
                 val pi = boundaryPendingIntent(context, b)
                 alarm.cancel(pi)
                 clock.boundaries.firstOrNull { it.boundary == b }?.let { event ->
-                    runCatching {
-                        if (exact) {
-                            if (Build.VERSION.SDK_INT >= 23) alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, event.triggerAtMillis, pi)
-                            else alarm.setExact(AlarmManager.RTC_WAKEUP, event.triggerAtMillis, pi)
-                        } else {
-                            if (Build.VERSION.SDK_INT >= 23) alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, event.triggerAtMillis, pi)
-                            else alarm.set(AlarmManager.RTC_WAKEUP, event.triggerAtMillis, pi)
-                        }
-                    }.onFailure { Log.e(TAG, "Unable to schedule ${b.name}", it) }
+                    val exactSet = exact && runCatching {
+                        alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, event.triggerAtMillis, pi)
+                    }.onFailure { Log.w(TAG, "Exact alarm unavailable for ${b.name}; falling back to inexact", it) }.isSuccess
+                    if (!exactSet) {
+                        runCatching {
+                            alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, event.triggerAtMillis, pi)
+                        }.onFailure { Log.e(TAG, "Unable to schedule fallback alarm for ${b.name}", it) }
+                    }
                 }
             }
         }
@@ -118,17 +117,25 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
                     views.setTextViewText(R.id.widget_days_value, parts.days.toString())
                     views.setTextViewText(R.id.widget_target_date, prefs.formattedTargetDate())
                     views.setViewVisibility(R.id.widget_cube_time, if (clock.visible) View.VISIBLE else View.GONE)
-                    if (clock.visible) views.setChronometer(R.id.widget_time_value,
-                        SystemClock.elapsedRealtime() + clock.remainingMillis, clock.chronometerFormat, true)
+                    if (clock.visible) {
+                        views.setChronometerCountDown(R.id.widget_time_value, true)
+                        views.setChronometer(
+                            R.id.widget_time_value,
+                            SystemClock.elapsedRealtime() + clock.remainingMillis,
+                            clock.chronometerFormat,
+                            true
+                        )
+                    }
 
                     widgetBackgroundBitmap(context, manager.getAppWidgetOptions(id), prefs.backgroundBitmap(), showTitle)
                         ?.let { views.setImageViewBitmap(R.id.widget_background, it) }
 
                     val personal = prefs.theme == CountdownPrefs.THEME_PERSONAL
                     val auto = personal && prefs.cubeStyle == CountdownPrefs.CUBES_AUTO
-                    val autoDark = auto && prefs.personalAutoContrastIsDark()
+                    val autoTextColor = if (auto) prefs.personalAutoContrastTextColor() else Color.WHITE
+                    val autoDark = auto && autoTextColor == PersonalTextContrast.AUTO_DARK_TEXT
                     val textColor = when {
-                        auto -> if (autoDark) 0xFF182033.toInt() else Color.WHITE
+                        auto -> autoTextColor
                         personal && prefs.cubeStyle != CountdownPrefs.CUBES_DARK -> 0xFF182033.toInt()
                         prefs.theme == CountdownPrefs.THEME_GOLD -> 0xFFFFE8B2.toInt()
                         prefs.theme == CountdownPrefs.THEME_PREMIUM -> 0xFFFFF0D8.toInt()
