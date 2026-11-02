@@ -494,7 +494,7 @@ class MainActivity : Activity() {
         }
         AlertDialog.Builder(this)
             .setTitle("גישה מיוחדת: התראות ותזכורות")
-            .setMessage("ההרשאה מאפשרת לתזמן את שלושת המעברים החשובים של שעון הווידג׳ט. היא אינה משמשת למטרה אחרת. אם לא תאשר, השעון ימשיך לפעול אך Android עשוי לעכב את שינויי התצוגה ואת ההסתרה בחצות.")
+            .setMessage("ההרשאה מאפשרת לתזמן את שלושת המעברים החשובים של שעון הווידג׳ט בלבד. אם לא תאשר, השעון ימשיך לפעול אך Android עשוי לעכב את שינויי התצוגה ואת ההסתרה בחצות. אם ההרשאה תבוטל, Android מבטל אזעקות מדויקות ואינו משדר הודעת ביטול; בפתיחה הבאה של האפליקציה נבדוק מחדש ונעבור לתזמון לא מדויק.")
             .setNegativeButton("לא עכשיו", null)
             .setPositiveButton("פתיחת הגדרות") { _, _ ->
                 runCatching {
@@ -529,6 +529,7 @@ class MainActivity : Activity() {
 
     private fun afterSettingsChanged() {
         CountdownWidgetBase.updateAllWidgets(this)
+        CountdownWidgetBase.scheduleBoundaries(this)
         if (!settingsShown) buildHomeScreen()
     }
 
