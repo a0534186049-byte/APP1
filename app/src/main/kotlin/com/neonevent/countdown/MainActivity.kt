@@ -451,6 +451,7 @@ class MainActivity : Activity() {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 prefs.setHebrewDate(currentYear, currentMonth, currentDay)
                 CountdownWidgetBase.updateAllWidgets(this)
+                CountdownWidgetBase.scheduleBoundaries(this)
                 dialog.dismiss()
                 if (settingsShown) buildSettingsScreen() else buildHomeScreen()
             }
