@@ -53,14 +53,20 @@ object NeonCountdownRenderer {
         val density = prefs.dp(1f)
         val theme = prefs.theme
         val isPersonal = theme == CountdownPrefs.THEME_PERSONAL
+        val isAutoContrast = isPersonal && prefs.cubeStyle == CountdownPrefs.CUBES_AUTO
+        val autoTextColor = if (isAutoContrast) prefs.personalAutoContrastTextColor() else Color.WHITE
+        val textColor = if (isAutoContrast) autoTextColor else Color.WHITE
         val accent = when (theme) {
             CountdownPrefs.THEME_GOLD -> Color.rgb(224, 185, 108)
             CountdownPrefs.THEME_GRADIENT -> Color.rgb(247, 241, 255)
             CountdownPrefs.THEME_PREMIUM -> Color.rgb(244, 210, 158)
+            else -> if (isAutoContrast) autoTextColor else Color.WHITE
+        }
+        val dayNumberColor = when {
+            isAutoContrast -> autoTextColor
+            isPersonal && prefs.cubeStyle != CountdownPrefs.CUBES_DARK -> Color.rgb(24, 29, 42)
             else -> Color.WHITE
         }
-        val textColor = Color.WHITE
-        val dayNumberColor = if (isPersonal && prefs.cubeStyle != CountdownPrefs.CUBES_DARK) Color.rgb(24, 29, 42) else Color.WHITE
 
         paint.shader = null
         paint.style = Paint.Style.FILL
@@ -97,7 +103,7 @@ object NeonCountdownRenderer {
         )
 
         if (prefs.showTitle) {
-            if (isPersonal) {
+            if (isPersonal && (!isAutoContrast || autoTextColor == PersonalTextContrast.AUTO_LIGHT_TEXT)) {
                 PersonalTextContrast.drawForRegion(
                     canvas, bitmap, w, h,
                     RectF(w * 0.06f, geometry.titleBaseline - prefs.sp(41f),
@@ -110,8 +116,10 @@ object NeonCountdownRenderer {
             paint.typeface = prefs.homeHeadingTypeface()
             val title = prefs.eventTitle.ifBlank { "הרגע הגדול מתקרב" }
             val fittedTitle = fitCenteredText(paint, title, prefs.sp(34f), prefs.sp(18f), w * 0.86f)
-            if (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM || isPersonal) {
-                paint.setShadowLayer(w * 0.008f, 0f, prefs.dp(2f), 0xA0000000.toInt())
+            if (!isAutoContrast || autoTextColor != PersonalTextContrast.AUTO_DARK_TEXT) {
+                if (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM || isPersonal) {
+                    paint.setShadowLayer(w * 0.008f, 0f, prefs.dp(2f), 0xA0000000.toInt())
+                }
             }
             canvas.drawText(fittedTitle, centerX, geometry.titleBaseline, paint)
             paint.clearShadowLayer()
@@ -131,6 +139,15 @@ object NeonCountdownRenderer {
                 isPersonal && prefs.cubeStyle == CountdownPrefs.CUBES_FROSTED -> {
                     fill = 0xA9F7F8FC.toInt(); stroke = 0xDDFEFFFF.toInt()
                     numberColor = dayNumberColor; labelColor = 0xFF303849.toInt()
+                }
+                isAutoContrast && autoTextColor == PersonalTextContrast.AUTO_DARK_TEXT -> {
+                    fill = 0xE8FFFFFF.toInt(); stroke = 0xD0FFFFFF.toInt()
+                    numberColor = autoTextColor; labelColor = 0xFF31394B.toInt()
+                }
+                isAutoContrast -> {
+                    fill = 0xD9151D2B.toInt(); stroke = 0xB8FFFFFF.toInt()
+                    numberColor = autoTextColor
+                    labelColor = if (autoTextColor == PersonalTextContrast.AUTO_GOLD_TEXT) 0xFFFFDFA4.toInt() else 0xFFE8EDF7.toInt()
                 }
                 isPersonal -> {
                     fill = 0xD9151D2B.toInt(); stroke = 0xB8FFFFFF.toInt()
@@ -195,7 +212,7 @@ object NeonCountdownRenderer {
         }
 
         if (countdown.complete) {
-            if (isPersonal) {
+            if (isPersonal && (!isAutoContrast || autoTextColor == PersonalTextContrast.AUTO_LIGHT_TEXT)) {
                 PersonalTextContrast.drawForRegion(
                     canvas, bitmap, w, h,
                     RectF(w * 0.06f, h * 0.245f - prefs.sp(25f),
@@ -232,7 +249,7 @@ object NeonCountdownRenderer {
 
         val quote = prefs.dailyQuote(nowMillis)
         if (quote.isNotBlank()) {
-            if (isPersonal) {
+            if (isPersonal && (!isAutoContrast || autoTextColor == PersonalTextContrast.AUTO_LIGHT_TEXT)) {
                 PersonalTextContrast.drawForRegion(
                     canvas, bitmap, w, h,
                     RectF(w * 0.05f, geometry.quoteBaseline - prefs.sp(22f),
@@ -241,9 +258,11 @@ object NeonCountdownRenderer {
                 )
             }
             paint.typeface = prefs.homeBodyTypeface()
-            paint.color = Color.WHITE
+            paint.color = textColor
             paint.textAlign = Paint.Align.CENTER
-            paint.setShadowLayer(prefs.dp(3f), 0f, prefs.dp(1f), 0xC0000000.toInt())
+            if (!isAutoContrast || autoTextColor != PersonalTextContrast.AUTO_DARK_TEXT) {
+                paint.setShadowLayer(prefs.dp(3f), 0f, prefs.dp(1f), 0xC0000000.toInt())
+            }
             drawWrappedCenteredText(
                 canvas = canvas,
                 text = quote,
@@ -318,7 +337,7 @@ object NeonCountdownRenderer {
         val labelMetrics = paint.fontMetrics
         val labelHeight = labelMetrics.descent - labelMetrics.ascent
 
-        val gap = maxOf(2f, chosenNumberSize * 0.07f)
+        val gap = maxOf(3f, chosenNumberSize * 0.14f)
         val totalHeight = numberHeight + gap + labelHeight
         val firstTop = centerY - totalHeight / 2f
         val numberBaseline = firstTop - numberMetrics.ascent
