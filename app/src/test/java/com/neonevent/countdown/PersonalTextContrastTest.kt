@@ -46,6 +46,13 @@ class PersonalTextContrastTest {
             PersonalTextContrast.AUTO_LIGHT_TEXT,
             PersonalTextContrast.recommendedTextColorForLuminanceSamples(colorful)
         )
+        val mostlyBrightWithDarkPatches = FloatArray(65) {
+            if (it < 7) 0.06f else 0.94f
+        }
+        assertEquals(
+            PersonalTextContrast.AUTO_LIGHT_TEXT,
+            PersonalTextContrast.recommendedTextColorForLuminanceSamples(mostlyBrightWithDarkPatches)
+        )
     }
 
     @Test fun luminanceUsesTheRelativeSrgbFormula() {
