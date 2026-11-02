@@ -36,8 +36,13 @@ def panel(bg, fonts, pair, label, out):
     d = ImageDraw.Draw(im)
     title, nums, body = ft(fonts,title_name,88), ft(fonts,num_name,112), ft(fonts,body_name,44)
     date, quote = ft(fonts,body_name,49), ft(fonts,body_name,44)
-    d.rounded_rectangle((40,42,250,112), radius=24, fill=(7,15,28,190), outline=(224,185,108,210), width=2)
-    rtl(d,(145,77),label,ft(fonts,body_name,30),PALE)
+    # Match the original physical top-left settings control; label the option at top-right.
+    d.rounded_rectangle((42,47,184,189), radius=72, fill=(11,20,34,214), outline=(255,255,255,184), width=3)
+    gear_path = Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+    gear_font = ImageFont.truetype(str(gear_path), 76) if gear_path.exists() else ft(fonts,body_name,64)
+    d.text((113,116), "⚙", font=gear_font, fill=(255,255,255,255), anchor="mm")
+    d.rounded_rectangle((W-250,42,W-40,112), radius=24, fill=(7,15,28,190), outline=(224,185,108,210), width=2)
+    rtl(d,(W-145,77),label,ft(fonts,body_name,30),PALE)
     rtl(d,(540,393),"הרגע הגדול מתקרב",title,GOLD)
     d.rounded_rectangle((292,527,788,926), radius=42, fill=DARK, outline=STROKE, width=4)
     rtl(d,(540,692),"45",nums,PALE)
@@ -49,7 +54,6 @@ def panel(bg, fonts, pair, label, out):
         rtl(d,((x1+x2)//2,1138),word,body,(241,216,164,255))
     rtl(d,(540,1273),"ט\"ו בחשוון תשפ\"ז",date,PALE)
     rtl(d,(540,1360),"כל יום הוא הזדמנות חדשה להתקדם",quote,(255,255,255,255))
-    rtl(d,(540,1850),caption,ft(fonts,"DavidLibre-Regular.ttf",22),(255,242,218,220))
     im.convert("RGB").save(out, quality=95)
     return im.convert("RGB")
 
