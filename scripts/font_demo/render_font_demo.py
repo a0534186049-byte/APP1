@@ -15,7 +15,7 @@ def verify(path):
     font = TTFont(path)
     for table in font["cmap"].tables:
         cmap.update(table.cmap.keys())
-    needed = [0x05D0, 0x05D1, 0x05EA, 0x0030, 0x0039, 0x003A, 0x05F4]
+    needed = [0x05D0, 0x05D1, 0x05EA, 0x0030, 0x0039, 0x003A, 0x0022]
     missing = [hex(x) for x in needed if x not in cmap]
     if missing:
         raise RuntimeError(f"{path.name} lacks Hebrew/digit glyphs: {missing}")
@@ -47,7 +47,7 @@ def panel(bg, fonts, pair, label, out):
         d.rounded_rectangle((x1,974,x2,1200), radius=40, fill=DARK, outline=STROKE, width=4)
         rtl(d,((x1+x2)//2,1052),value,nums,PALE)
         rtl(d,((x1+x2)//2,1138),word,body,(241,216,164,255))
-    rtl(d,(540,1273),"ט״ו בחשוון תשפ״ז",date,PALE)
+    rtl(d,(540,1273),"ט\"ו בחשוון תשפ\"ז",date,PALE)
     rtl(d,(540,1360),"כל יום הוא הזדמנות חדשה להתקדם",quote,(255,255,255,255))
     rtl(d,(540,1850),caption,ft(fonts,"DavidLibre-Regular.ttf",22),(255,242,218,220))
     im.convert("RGB").save(out, quality=95)
