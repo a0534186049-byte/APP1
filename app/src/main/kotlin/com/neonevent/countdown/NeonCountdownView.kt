@@ -195,6 +195,7 @@ object NeonCountdownRenderer {
                 centerY = bounds.centerY,
                 number = numberText,
                 label = label,
+                numberTypeface = prefs.homeHeadingTypeface(),
                 bodyTypeface = prefs.homeBodyTypeface(),
                 numberSize = prefs.sp(if (isDays) 44f else 39f),
                 labelSize = prefs.sp(17f),
@@ -287,6 +288,7 @@ object NeonCountdownRenderer {
         centerY: Float,
         number: String,
         label: String,
+        numberTypeface: Typeface,
         bodyTypeface: Typeface,
         numberSize: Float,
         labelSize: Float,
@@ -303,7 +305,7 @@ object NeonCountdownRenderer {
         val minimumLabelSize = labelSize * 0.75f
 
         fun combinedTextHeight(): Float {
-            paint.typeface = Typeface.create(bodyTypeface, Typeface.BOLD)
+            paint.typeface = numberTypeface
             paint.textSize = chosenNumberSize
             val numberMetrics = paint.fontMetrics
             paint.typeface = bodyTypeface
@@ -323,7 +325,7 @@ object NeonCountdownRenderer {
             chosenLabelSize = (chosenLabelSize * 0.96f).coerceAtLeast(minimumLabelSize)
         }
 
-        paint.typeface = Typeface.create(bodyTypeface, Typeface.BOLD)
+        paint.typeface = numberTypeface
         val fittedNumber = fitCenteredText(
             paint, number, chosenNumberSize, chosenNumberSize * 0.82f, maxWidth
         )
@@ -345,7 +347,7 @@ object NeonCountdownRenderer {
         val numberBaseline = firstTop - numberMetrics.ascent
         val labelBaseline = firstTop + numberHeight + gap - labelMetrics.ascent
 
-        paint.typeface = Typeface.create(bodyTypeface, Typeface.BOLD)
+        paint.typeface = numberTypeface
         paint.textSize = numberTextSize
         paint.color = numberColor
         if (shadow) paint.setShadowLayer(2f, 0f, 1f, 0x66000000)

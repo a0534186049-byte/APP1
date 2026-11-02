@@ -19,11 +19,17 @@ class CountdownPrefs(context: Context) {
     private var cachedBitmap: Bitmap? = null
     private var cachedAutoContrastKey: String? = null
     private var cachedAutoContrastColor: Int? = null
+    // Option A: Suez One Regular for the event heading and countdown numerals.
     private val headingTypeface by lazy(LazyThreadSafetyMode.NONE) {
-        appContext.resources.getFont(R.font.secular_one)
+        appContext.resources.getFont(R.font.suez_one)
     }
+    // Frank Ruhl Libre variable font at its actual Medium 500 weight.
     private val bodyTypeface by lazy(LazyThreadSafetyMode.NONE) {
-        appContext.resources.getFont(R.font.heebo)
+        appContext.resources.openRawResource(R.font.frank_ruhl_libre_variable).use { fontStream ->
+            android.graphics.Typeface.Builder(fontStream)
+                .setFontVariationSettings("'wght' 500")
+                .build()
+        }
     }
 
     fun homeHeadingTypeface(): android.graphics.Typeface = headingTypeface

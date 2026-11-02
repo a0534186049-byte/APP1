@@ -35,8 +35,8 @@
             android:ellipsize="end"
             android:text="@string/app_name"
             android:textColor="#FFFFFF"
+            android:fontFamily="@font/suez_one"
             android:textSize="11sp"
-            android:textStyle="bold"
             android:paddingBottom="1dp" />
 
         <LinearLayout
@@ -65,8 +65,8 @@
                     android:gravity="center"
                     android:text="00"
                     android:textColor="#FFFFE8B2"
+                    android:fontFamily="@font/suez_one"
                     android:textSize="18sp"
-                    android:textStyle="bold"
                     android:maxLines="1" />
 
                 <TextView
@@ -76,6 +76,8 @@
                     android:gravity="center"
                     android:text="ימים"
                     android:textColor="#FFFFE8B2"
+                    android:fontFamily="@font/frank_ruhl_libre_variable"
+                    android:fontVariationSettings="'wght' 500"
                     android:textSize="8sp" />
             </LinearLayout>
 
@@ -100,8 +102,8 @@
                     android:countDown="true"
                     android:format="%s"
                     android:textColor="#FFFFE8B2"
+                    android:fontFamily="@font/suez_one"
                     android:textSize="22sp"
-                    android:textStyle="bold"
                     android:maxLines="1" />
 
                 <TextView
@@ -111,6 +113,8 @@
                     android:gravity="center"
                     android:text="עד חצות"
                     android:textColor="#FFFFE8B2"
+                    android:fontFamily="@font/frank_ruhl_libre_variable"
+                    android:fontVariationSettings="'wght' 500"
                     android:textSize="8sp" />
             </LinearLayout>
         </LinearLayout>
@@ -123,6 +127,8 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="#FFFFFF"
+            android:fontFamily="@font/frank_ruhl_libre_variable"
+            android:fontVariationSettings="'wght' 500"
             android:textSize="9sp"
             android:paddingTop="1dp"
             android:text="תאריך היעד" />
