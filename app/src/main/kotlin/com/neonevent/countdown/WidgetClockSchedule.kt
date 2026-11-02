@@ -1,6 +1,5 @@
 package com.neonevent.countdown
 
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -33,7 +32,7 @@ data class WidgetClockSnapshot(
 object WidgetClockSchedule {
     const val TEN_HOURS_MS = 10L * 60L * 60L * 1000L
     const val ONE_HOUR_MS = 60L * 60L * 1000L
-    const val MIDNIGHT_SAFETY_BUFFER_MS = 3_000L
+    const val MIDNIGHT_SAFETY_BUFFER_MS = 5_000L
 
     fun evaluate(
         eventLocalDate: LocalDate,
@@ -54,6 +53,9 @@ object WidgetClockSchedule {
 
         val midnightMillis = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val remaining = (midnightMillis - nowMillis).coerceAtLeast(0L)
+        // Hide a few seconds before local midnight so a delayed alarm cannot leave
+        // the running Chronometer showing a negative duration.
+        val clockVisible = remaining > MIDNIGHT_SAFETY_BUFFER_MS
         val boundaries = buildList {
             addBoundaryIfFuture(
                 WidgetClockBoundary.TEN_HOURS,
@@ -65,13 +67,17 @@ object WidgetClockSchedule {
                 midnightMillis - ONE_HOUR_MS + 1_000L,
                 nowMillis
             )
-            addBoundaryIfFuture(WidgetClockBoundary.MIDNIGHT, midnightMillis, nowMillis)
+            addBoundaryIfFuture(
+                WidgetClockBoundary.MIDNIGHT,
+                midnightMillis - MIDNIGHT_SAFETY_BUFFER_MS,
+                nowMillis
+            )
         }
 
         return WidgetClockSnapshot(
-            visible = remaining > 0L,
+            visible = clockVisible,
             nextMidnightMillis = midnightMillis,
-            remainingMillis = remaining,
+            remainingMillis = if (clockVisible) remaining else 0L,
             chronometerFormat = formatForRemaining(remaining),
             boundaries = boundaries
         )
