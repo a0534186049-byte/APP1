@@ -32,7 +32,7 @@ data class WidgetClockSnapshot(
 object WidgetClockSchedule {
     const val TEN_HOURS_MS = 10L * 60L * 60L * 1000L
     const val ONE_HOUR_MS = 60L * 60L * 1000L
-    const val MIDNIGHT_SAFETY_BUFFER_MS = 5_000L
+    const val MIDNIGHT_SAFETY_BUFFER_MS = 0L
 
     fun evaluate(
         eventLocalDate: LocalDate,
@@ -53,9 +53,9 @@ object WidgetClockSchedule {
 
         val midnightMillis = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val remaining = (midnightMillis - nowMillis).coerceAtLeast(0L)
-        // Hide a few seconds before local midnight so a delayed alarm cannot leave
-        // the running Chronometer showing a negative duration.
-        val clockVisible = remaining > MIDNIGHT_SAFETY_BUFFER_MS
+        // Keep the days card on its existing local-date boundary. The midnight alarm
+        // refreshes both days and clock; Android may still delay delivery in some states.
+        val clockVisible = remaining > 0L
         val boundaries = buildList {
             addBoundaryIfFuture(
                 WidgetClockBoundary.TEN_HOURS,
@@ -67,11 +67,7 @@ object WidgetClockSchedule {
                 midnightMillis - ONE_HOUR_MS + 1_000L,
                 nowMillis
             )
-            addBoundaryIfFuture(
-                WidgetClockBoundary.MIDNIGHT,
-                midnightMillis - MIDNIGHT_SAFETY_BUFFER_MS,
-                nowMillis
-            )
+            addBoundaryIfFuture(WidgetClockBoundary.MIDNIGHT, midnightMillis, nowMillis)
         }
 
         return WidgetClockSnapshot(
