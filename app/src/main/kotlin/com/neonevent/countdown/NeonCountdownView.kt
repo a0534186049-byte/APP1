@@ -229,7 +229,7 @@ object NeonCountdownRenderer {
             paint.clearShadowLayer()
         }
 
-        if (isPersonal) {
+        if (isPersonal && (!isAutoContrast || autoTextColor == PersonalTextContrast.AUTO_LIGHT_TEXT)) {
             PersonalTextContrast.drawForRegion(
                 canvas, bitmap, w, h,
                 RectF(w * 0.06f, geometry.dateBaseline - prefs.sp(23f),
@@ -243,7 +243,9 @@ object NeonCountdownRenderer {
         val dateText = fitCenteredText(
             paint, prefs.formattedTargetDate(), prefs.sp(20f), prefs.sp(15f), w * 0.90f
         )
-        paint.setShadowLayer(prefs.dp(2f), 0f, prefs.dp(1f), 0x99000000.toInt())
+        if (!isAutoContrast || autoTextColor != PersonalTextContrast.AUTO_DARK_TEXT) {
+            paint.setShadowLayer(prefs.dp(2f), 0f, prefs.dp(1f), 0x99000000.toInt())
+        }
         canvas.drawText(dateText, centerX, geometry.dateBaseline, paint)
         paint.clearShadowLayer()
 
