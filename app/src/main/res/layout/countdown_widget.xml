@@ -14,7 +14,6 @@
         android:contentDescription="@string/widget_background_description"
         android:scaleType="fitCenter" />
 
-    <!-- FrameLayout is in the RemoteViews-supported view list; a plain View is not. -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -58,50 +57,61 @@
                 android:gravity="center"
                 android:background="@drawable/widget_cube_gold"
                 android:padding="1dp">
-                <TextView android:id="@+id/widget_days_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
-                <TextView android:id="@+id/widget_days_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="ימים" android:textColor="#FFFFE8B2" android:textSize="8sp" />
+
+                <TextView
+                    android:id="@+id/widget_days_value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="00"
+                    android:textColor="#FFFFE8B2"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
+
+                <TextView
+                    android:id="@+id/widget_days_label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="ימים"
+                    android:textColor="#FFFFE8B2"
+                    android:textSize="8sp" />
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/widget_cube_hours"
+                android:id="@+id/widget_cube_time"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
+                android:layout_weight="3"
                 android:layout_margin="1dp"
                 android:orientation="vertical"
                 android:gravity="center"
                 android:background="@drawable/widget_cube_gold"
-                android:padding="1dp">
-                <TextView android:id="@+id/widget_hours_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
-                <TextView android:id="@+id/widget_hours_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="שעות" android:textColor="#FFFFE8B2" android:textSize="8sp" />
-            </LinearLayout>
+                android:padding="2dp">
 
-            <LinearLayout
-                android:id="@+id/widget_cube_minutes"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:layout_margin="1dp"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:background="@drawable/widget_cube_gold"
-                android:padding="1dp">
-                <TextView android:id="@+id/widget_minutes_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
-                <TextView android:id="@+id/widget_minutes_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="דקות" android:textColor="#FFFFE8B2" android:textSize="8sp" />
-            </LinearLayout>
+                <Chronometer
+                    android:id="@+id/widget_time_value"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:layoutDirection="ltr"
+                    android:textDirection="ltr"
+                    android:countDown="true"
+                    android:format="%s"
+                    android:textColor="#FFFFE8B2"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:maxLines="1" />
 
-            <LinearLayout
-                android:id="@+id/widget_cube_seconds"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:layout_margin="1dp"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:background="@drawable/widget_cube_gold"
-                android:padding="1dp">
-                <TextView android:id="@+id/widget_seconds_value" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="00" android:textColor="#FFFFE8B2" android:textSize="18sp" android:textStyle="bold" android:maxLines="1" />
-                <TextView android:id="@+id/widget_seconds_label" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="שניות" android:textColor="#FFFFE8B2" android:textSize="8sp" />
+                <TextView
+                    android:id="@+id/widget_time_label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="עד חצות"
+                    android:textColor="#FFFFE8B2"
+                    android:textSize="8sp" />
             </LinearLayout>
         </LinearLayout>
 
