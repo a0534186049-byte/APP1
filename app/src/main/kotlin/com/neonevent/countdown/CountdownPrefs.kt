@@ -17,6 +17,8 @@ class CountdownPrefs(context: Context) {
     private val prefs = appContext.getSharedPreferences("event_countdown_settings", Context.MODE_PRIVATE)
     private var cachedBitmapKey: String? = null
     private var cachedBitmap: Bitmap? = null
+    private var cachedAutoContrastKey: String? = null
+    private var cachedAutoContrastColor: Int? = null
     private val headingTypeface by lazy(LazyThreadSafetyMode.NONE) {
         appContext.resources.getFont(R.font.secular_one)
     }
@@ -290,9 +292,20 @@ class CountdownPrefs(context: Context) {
     }
 
 
-    /** Recomputed from the currently selected personal image; the bitmap is never modified. */
-    fun personalAutoContrastTextColor(): Int =
-        PersonalTextContrast.recommendedTextColor(backgroundBitmap())
+    /**
+     * Cache the 65-pixel image analysis for the selected image. Changing the image URI
+     * changes the key automatically, so the next draw performs a fresh analysis.
+     */
+    fun personalAutoContrastTextColor(): Int {
+        val key = personalImageUri ?: "missing-personal-image"
+        if (cachedAutoContrastKey == key) {
+            cachedAutoContrastColor?.let { return it }
+        }
+        val selectedColor = PersonalTextContrast.recommendedTextColor(backgroundBitmap())
+        cachedAutoContrastKey = key
+        cachedAutoContrastColor = selectedColor
+        return selectedColor
+    }
 
     fun personalAutoContrastIsDark(): Boolean =
         personalAutoContrastTextColor() == PersonalTextContrast.AUTO_DARK_TEXT
