@@ -54,9 +54,12 @@ object PersonalTextContrast {
         if (samples.isEmpty()) return AUTO_LIGHT_TEXT
         val sorted = samples.copyOf().apply { sort() }
         val average = samples.average().toFloat()
+        val p10 = sorted[((sorted.size - 1) * 0.10f).roundToInt().coerceIn(0, sorted.lastIndex)]
         val p90 = sorted[((sorted.size - 1) * 0.90f).roundToInt().coerceIn(0, sorted.lastIndex)]
         return when {
-            average >= 0.58f && p90 >= 0.68f -> AUTO_DARK_TEXT
+            // Dark text is safe only when even the darker sampled parts are bright.
+            average >= 0.62f && p10 >= 0.46f -> AUTO_DARK_TEXT
+            // Gold is reserved for consistently dark photos; mixed scenes use white + scrim.
             average <= 0.16f && p90 <= 0.28f -> AUTO_GOLD_TEXT
             else -> AUTO_LIGHT_TEXT
         }
