@@ -25,7 +25,8 @@ class CountdownWidgetRemoteViewsInstrumentedTest {
         assertNotNull(inflated)
         assertNotNull(inflated.findViewById<View>(R.id.widget_background))
         assertNotNull(inflated.findViewById<View>(R.id.widget_days_value))
-        assertNotNull(inflated.findViewById<View>(R.id.widget_seconds_label))
+        assertNotNull(inflated.findViewById<View>(R.id.widget_time_value))
+        assertNotNull(inflated.findViewById<View>(R.id.widget_time_label))
     }
 
     @Test fun attachedRemoteViewsChronometerUsesFixedHourFormatsWhileCountingDown() {
