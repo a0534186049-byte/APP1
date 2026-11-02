@@ -46,6 +46,38 @@ object PersonalTextContrast {
      * Use the regional average plus a 90th-percentile safety check. This keeps
      * mixed bright/dark photographs from leaving bright text patches unreadable.
      */
+    const val AUTO_DARK_TEXT = 0xFF182033.toInt()
+    const val AUTO_LIGHT_TEXT = 0xFFFFFFFF.toInt()
+    const val AUTO_GOLD_TEXT = 0xFFFFE8B2.toInt()
+
+    fun recommendedTextColorForLuminanceSamples(samples: FloatArray): Int {
+        if (samples.isEmpty()) return AUTO_LIGHT_TEXT
+        val sorted = samples.copyOf().apply { sort() }
+        val average = samples.average().toFloat()
+        val p90 = sorted[((sorted.size - 1) * 0.90f).roundToInt().coerceIn(0, sorted.lastIndex)]
+        return when {
+            average >= 0.58f && p90 >= 0.68f -> AUTO_DARK_TEXT
+            average <= 0.16f && p90 <= 0.28f -> AUTO_GOLD_TEXT
+            else -> AUTO_LIGHT_TEXT
+        }
+    }
+
+    fun recommendedTextColor(bitmap: Bitmap?): Int {
+        if (bitmap == null || bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) {
+            return AUTO_LIGHT_TEXT
+        }
+        val samples = FloatArray(SAMPLE_COLUMNS * SAMPLE_ROWS)
+        var index = 0
+        for (row in 0 until SAMPLE_ROWS) {
+            val y = ((row + 0.5f) * bitmap.height / SAMPLE_ROWS).toInt().coerceIn(0, bitmap.height - 1)
+            for (column in 0 until SAMPLE_COLUMNS) {
+                val x = ((column + 0.5f) * bitmap.width / SAMPLE_COLUMNS).toInt().coerceIn(0, bitmap.width - 1)
+                samples[index++] = relativeLuminance(bitmap.getPixel(x, y))
+            }
+        }
+        return recommendedTextColorForLuminanceSamples(samples)
+    }
+
     fun scrimAlphaForLuminanceSamples(samples: FloatArray): Int {
         if (samples.isEmpty()) return 0
         val average = samples.average().toFloat()
