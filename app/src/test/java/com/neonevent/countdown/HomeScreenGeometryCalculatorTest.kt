@@ -72,4 +72,63 @@ class HomeScreenGeometryCalculatorTest {
         assertEquals(1, layout.lowerCards.size)
         assertTrue(layout.lowerCards.single().width > 0f)
     }
+
+    @Test fun dateTextHasMoreAirBelowTheCountdownCardsInPortraitAndLandscape() {
+        val portraitSizes = listOf(
+            320f to 640f,
+            360f to 780f,
+            411f to 915f,
+            800f to 1280f
+        )
+        portraitSizes.forEach { (width, height) ->
+            val layout = HomeScreenGeometryCalculator.calculate(
+                widthPx = width,
+                heightPx = height,
+                density = 1f,
+                scaledDensity = 1f,
+                showDays = true,
+                lowerCount = 3
+            )
+            assertTrue(
+                "Portrait gap was too small for ${width}x${height}",
+                layout.dateBaseline - layout.lowerCards.last().bottom >= 28f
+            )
+            assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= height + 0.01f)
+            assertTrue(layout.quoteMaxHeight >= 0f)
+        }
+
+        val landscapeSizes = listOf(411f to 320f, 800f to 600f)
+        landscapeSizes.forEach { (width, height) ->
+            val layout = HomeScreenGeometryCalculator.calculate(
+                widthPx = width,
+                heightPx = height,
+                density = 1f,
+                scaledDensity = 1f,
+                showDays = true,
+                lowerCount = 3
+            )
+            assertTrue(
+                "Landscape gap was too small for ${width}x${height}",
+                layout.dateBaseline - layout.lowerCards.last().bottom >= 12f
+            )
+            assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= height + 0.01f)
+            assertTrue(layout.quoteMaxHeight >= 0f)
+        }
+    }
+
+    @Test fun increasedDateGapKeepsTextAreaWithinBoundsAtLargerSystemFontScale() {
+        listOf(1.0f, 1.3f, 1.6f).forEach { fontScale ->
+            val layout = HomeScreenGeometryCalculator.calculate(
+                widthPx = 360f,
+                heightPx = 780f,
+                density = 1f,
+                scaledDensity = fontScale,
+                showDays = true,
+                lowerCount = 3
+            )
+            assertTrue(layout.dateBaseline >= layout.lowerCards.last().bottom + 28f)
+            assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= 780f + 0.01f)
+            assertTrue(layout.quoteMaxHeight >= 0f)
+        }
+    }
 }

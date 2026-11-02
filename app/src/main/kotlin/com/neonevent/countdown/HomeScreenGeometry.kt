@@ -89,7 +89,8 @@ object HomeScreenGeometryCalculator {
 
         val lowerBottomDp = if (count > 0) lowerTopDp + lowerHeightDp else
             if (showDays) dayTopDp + dayHeightDp else dayTopDp
-        val dateBaselineDp = maxOf(lowerBottomDp + (if (isLandscape) 4f else 20f), heightDp * 0.60f)
+        val dateGapDp = if (isLandscape) 12f else 28f
+        val dateBaselineDp = maxOf(lowerBottomDp + dateGapDp, heightDp * 0.60f)
         val quoteBaselineDp = dateBaselineDp + (if (isLandscape) 12f else 28f)
         val quoteMaxHeightDp = (heightDp - (if (isLandscape) 2f else 16f) - quoteBaselineDp).coerceAtLeast(0f)
 
