@@ -290,23 +290,12 @@ class CountdownPrefs(context: Context) {
     }
 
 
-    /** Returns true when the chosen personal image is bright enough for dark text. */
-    fun personalAutoContrastIsDark(): Boolean {
-        val bitmap = backgroundBitmap() ?: return false
-        if (bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) return false
-        val samples = FloatArray(65)
-        var index = 0
-        for (row in 0 until 5) {
-            val y = ((row + 0.5f) * bitmap.height / 5f).toInt().coerceIn(0, bitmap.height - 1)
-            for (column in 0 until 13) {
-                val x = ((column + 0.5f) * bitmap.width / 13f).toInt().coerceIn(0, bitmap.width - 1)
-                samples[index++] = PersonalTextContrast.relativeLuminance(bitmap.getPixel(x, y))
-            }
-        }
-        val sorted = samples.sorted()
-        val conservative = maxOf(samples.average().toFloat(), sorted[58])
-        return conservative >= 0.42f
-    }
+    /** Recomputed from the currently selected personal image; the bitmap is never modified. */
+    fun personalAutoContrastTextColor(): Int =
+        PersonalTextContrast.recommendedTextColor(backgroundBitmap())
+
+    fun personalAutoContrastIsDark(): Boolean =
+        personalAutoContrastTextColor() == PersonalTextContrast.AUTO_DARK_TEXT
 
     fun resetEventSettings() {
         eventTitle = "הרגע הגדול מתקרב"
