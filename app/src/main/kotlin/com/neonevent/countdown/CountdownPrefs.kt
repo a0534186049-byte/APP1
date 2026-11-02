@@ -25,11 +25,11 @@ class CountdownPrefs(context: Context) {
     }
     // Frank Ruhl Libre variable font at its actual Medium 500 weight.
     private val bodyTypeface by lazy(LazyThreadSafetyMode.NONE) {
-        appContext.resources.openRawResource(R.font.frank_ruhl_libre_variable).use { fontStream ->
-            android.graphics.Typeface.Builder(fontStream)
-                .setFontVariationSettings("'wght' 500")
-                .build()
-        }
+        android.graphics.Typeface.create(
+            appContext.resources.getFont(R.font.frank_ruhl_libre_variable),
+            500,
+            false
+        )
     }
 
     fun homeHeadingTypeface(): android.graphics.Typeface = headingTypeface
