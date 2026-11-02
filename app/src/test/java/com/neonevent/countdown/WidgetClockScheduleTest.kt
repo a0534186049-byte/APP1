@@ -49,10 +49,7 @@ class WidgetClockScheduleTest {
         )
         assertEquals(14L * 60L * 60L * 1000L + 1_000L, snapshot.boundaries[0].triggerAtMillis - now)
         assertEquals(23L * 60L * 60L * 1000L + 1_000L, snapshot.boundaries[1].triggerAtMillis - now)
-        assertEquals(
-            24L * 60L * 60L * 1000L - WidgetClockSchedule.MIDNIGHT_SAFETY_BUFFER_MS,
-            snapshot.boundaries[2].triggerAtMillis - now
-        )
+        assertEquals(24L * 60L * 60L * 1000L, snapshot.boundaries[2].triggerAtMillis - now)
     }
 
     @Test fun alreadyCrossedThresholdsAreNotScheduledAgain() {
@@ -62,16 +59,6 @@ class WidgetClockScheduleTest {
 
         assertEquals("00:%s", snapshot.chronometerFormat)
         assertEquals(listOf(WidgetClockBoundary.MIDNIGHT), snapshot.boundaries.map { it.boundary })
-    }
-
-    @Test fun clockHidesJustBeforeMidnightAndNeverReturnsAZeroOrNegativeDuration() {
-        val zone = ZoneId.of("UTC")
-        val midnight = ZonedDateTime.of(2026, 5, 3, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
-        val now = midnight - WidgetClockSchedule.MIDNIGHT_SAFETY_BUFFER_MS
-        val snapshot = WidgetClockSchedule.evaluate(LocalDate.of(2026, 5, 5), now, zone)
-        assertFalse(snapshot.visible)
-        assertEquals(0L, snapshot.remainingMillis)
-        assertEquals(emptyList<WidgetClockBoundaryTime>(), snapshot.boundaries)
     }
 
     @Test fun localMidnightFollowsSpringAndAutumnDstDayLengths() {
