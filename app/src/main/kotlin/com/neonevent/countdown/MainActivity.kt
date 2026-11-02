@@ -1,6 +1,7 @@
 package com.neonevent.countdown
 
 import android.app.Activity
+import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.WallpaperManager
 import android.content.ActivityNotFoundException
@@ -51,6 +52,7 @@ class MainActivity : Activity() {
         // Recalculate immediately after returning from the background or system settings.
         window.decorView.invalidate()
         CountdownWidgetBase.updateAllWidgets(this)
+        CountdownWidgetBase.scheduleBoundaries(this)
     }
 
     private fun buildHomeScreen() {
@@ -157,7 +159,7 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.HORIZONTAL
                 layoutDirection = View.LAYOUT_DIRECTION_RTL
             }
-            for (style in CountdownPrefs.CUBES_DARK..CountdownPrefs.CUBES_FROSTED) {
+            for (style in CountdownPrefs.CUBES_DARK..CountdownPrefs.CUBES_AUTO) {
                 val colors = when (style) {
                     CountdownPrefs.CUBES_LIGHT -> Quadruple(
                         0xE8FFFFFF.toInt(), 0xD0FFFFFF.toInt(),
@@ -166,6 +168,13 @@ class MainActivity : Activity() {
                     CountdownPrefs.CUBES_FROSTED -> Quadruple(
                         0xBFF7F8FC.toInt(), 0xDDFEFFFF.toInt(),
                         0xFF182033.toInt(), 0xFF303849.toInt()
+                    )
+                    CountdownPrefs.CUBES_AUTO -> if (prefs.personalAutoContrastIsDark()) Quadruple(
+                        0xE8FFFFFF.toInt(), 0xD0FFFFFF.toInt(),
+                        0xFF182033.toInt(), 0xFF31394B.toInt()
+                    ) else Quadruple(
+                        0xD9151D2B.toInt(), 0xB8FFFFFF.toInt(),
+                        Color.WHITE, 0xFFE8EDF7.toInt()
                     )
                     else -> Quadruple(
                         0xD9151D2B.toInt(), 0xB8FFFFFF.toInt(),
@@ -302,6 +311,19 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(-1, dp(50)))
         card.addView(makeButton("▣  הגדרות טפט חי") { openWallpaperPicker() },
             LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
+        card.addView(makeText("עדכון שעון הווידג׳ט", 17f, Color.WHITE, true),
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+        val exactAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
+        card.addView(makeText(
+            if (exactAllowed) "הרשאת התזמון המדויק זמינה. Android עדיין עשוי לעכב אזעקות במצבי מערכת מסוימים."
+            else "כדי לשפר את דיוק המעברים בין תצוגות השעון וחצות, אפשר לאשר גישה מיוחדת „התראות ותזכורות”. ללא האישור Android עשוי לדחות את העדכונים.",
+            13.5f, 0xFFCBD4E5.toInt(), false
+        ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+        card.addView(makeButton(if (exactAllowed) "בדיקת הרשאת התזמון" else "פתיחת Alarms & reminders") {
+            requestExactAlarmAccess()
+        }, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(8) })
+
         card.addView(makeText("ווידג׳טים למסך הבית", 17f, Color.WHITE, true),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
         card.addView(makeText("לחצו לחיצה ארוכה על מסך הבית, בחרו „ווידג׳טים” והוסיפו „ספירה עם כותרת” או „ספירה ללא כותרת”. העדכון מתבצע בקירוב פעם בדקה בהתאם למדיניות Android.", 14f, 0xFFCBD4E5.toInt(), false),
@@ -457,6 +479,31 @@ class MainActivity : Activity() {
         prefs.backgroundBitmap()
         afterSettingsChanged()
         if (settingsShown) buildSettingsScreen() else buildHomeScreen()
+    }
+
+    private fun requestExactAlarmAccess() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            toast("בגרסת Android זו אין צורך בהרשאה המיוחדת")
+            return
+        }
+        val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+        if (alarmManager.canScheduleExactAlarms()) {
+            toast("ההרשאה כבר מאושרת")
+            CountdownWidgetBase.scheduleBoundaries(this)
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle("גישה מיוחדת: התראות ותזכורות")
+            .setMessage("ההרשאה מאפשרת לתזמן את שלושת המעברים החשובים של שעון הווידג׳ט. היא אינה משמשת למטרה אחרת. אם לא תאשר, השעון ימשיך לפעול אך Android עשוי לעכב את שינויי התצוגה ואת ההסתרה בחצות.")
+            .setNegativeButton("לא עכשיו", null)
+            .setPositiveButton("פתיחת הגדרות") { _, _ ->
+                runCatching {
+                    startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                        Uri.parse("package:" + packageName)))
+                }.onFailure {
+                    unsupported("לא ניתן לפתוח את מסך Alarms & reminders במכשיר הזה. אפשר למצוא את האפליקציה בהגדרות > אפליקציות > גישה מיוחדת.")
+                }
+            }.show()
     }
 
     private fun openDreamSettings() {
