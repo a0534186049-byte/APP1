@@ -131,7 +131,16 @@ jobs:
           echo "RELEASE_KEY_ALIAS=$ALIAS" >> "$GITHUB_ENV"
 
       - name: Run unit tests and build Debug and Release
-        run: gradle --no-daemon clean lint testDebugUnitTest assembleDebug assembleRelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gradle --no-daemon clean lint testDebugUnitTest assembleDebug assembleRelease; then
+            echo "===== Android Lint debug report ====="
+            cat app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt || true
+            echo "===== Android Lint release report ====="
+            cat app/build/intermediates/lint_intermediate_text_report/release/lintVitalReportRelease/lint-results-release.txt || true
+            exit 1
+          fi
 
       - name: Enable KVM for Android emulator
         run: |
