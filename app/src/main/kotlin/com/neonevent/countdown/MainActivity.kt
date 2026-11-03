@@ -1,6 +1,7 @@
 package com.neonevent.countdown
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.WallpaperManager
@@ -30,10 +31,15 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
     private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
     private lateinit var prefs: CountdownPrefs
     private var settingsShown = false
+    private val settingsBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            buildHomeScreen()
+        }
+    }
     private val imageRequestCode = 4902
     private val ink = Color.rgb(12, 17, 31)
     private val gold = Color.rgb(224, 185, 108)
@@ -41,6 +47,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = CountdownPrefs(this)
+        onBackPressedDispatcher.addCallback(this, settingsBackCallback)
         window.statusBarColor = ink
         window.navigationBarColor = ink
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -57,6 +64,7 @@ class MainActivity : Activity() {
 
     private fun buildHomeScreen() {
         settingsShown = false
+        settingsBackCallback.isEnabled = false
         val frame = FrameLayout(this).apply { setBackgroundColor(ink); layoutDirection = View.LAYOUT_DIRECTION_RTL }
         frame.addView(NeonCountdownView(this), FrameLayout.LayoutParams(-1, -1))
 
@@ -80,6 +88,7 @@ class MainActivity : Activity() {
 
     private fun buildSettingsScreen() {
         settingsShown = true
+        settingsBackCallback.isEnabled = true
         val frame = FrameLayout(this).apply { layoutDirection = View.LAYOUT_DIRECTION_RTL; setBackgroundColor(ink) }
         val background = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
@@ -572,8 +581,4 @@ class MainActivity : Activity() {
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density + 0.5f).toInt()
 
-    @Deprecated("Back navigation routes to the home screen while settings are open.")
-    override fun onBackPressed() {
-        if (settingsShown) buildHomeScreen() else super.onBackPressed()
-    }
 }
