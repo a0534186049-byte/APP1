@@ -10,6 +10,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -127,10 +128,16 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
                         )
                     }
 
-                    widgetBackgroundBitmap(context, manager.getAppWidgetOptions(id), prefs.backgroundBitmap(), showTitle)
-                        ?.let { views.setImageViewBitmap(R.id.widget_background, it) }
+                    val widgetBackground = widgetBackgroundBitmap(
+                        context, manager.getAppWidgetOptions(id), prefs.backgroundBitmap(), showTitle
+                    )
+                    widgetBackground?.let { views.setImageViewBitmap(R.id.widget_background, it) }
 
                     val personal = prefs.theme == CountdownPrefs.THEME_PERSONAL
+                    views.setViewVisibility(
+                        R.id.widget_background_overlay,
+                        if (personal) View.GONE else View.VISIBLE
+                    )
                     val auto = personal && prefs.cubeStyle == CountdownPrefs.CUBES_AUTO
                     val autoTextColor = if (auto) prefs.personalAutoContrastTextColor() else Color.WHITE
                     val autoDark = auto && autoTextColor == PersonalTextContrast.AUTO_DARK_TEXT
@@ -141,8 +148,22 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
                         prefs.theme == CountdownPrefs.THEME_PREMIUM -> 0xFFFFF0D8.toInt()
                         else -> Color.WHITE
                     }
-                    listOf(R.id.widget_title, R.id.widget_days_value, R.id.widget_time_value,
-                        R.id.widget_days_label, R.id.widget_time_label, R.id.widget_target_date)
+                    val titleColor = if (personal && widgetBackground != null) {
+                        PersonalTextContrast.recommendedTextColorForRegion(
+                            widgetBackground, widgetBackground.width.toFloat(), widgetBackground.height.toFloat(),
+                            RectF(0f, 0f, widgetBackground.width.toFloat(), widgetBackground.height * 0.24f)
+                        )
+                    } else textColor
+                    val targetDateColor = if (personal && widgetBackground != null) {
+                        PersonalTextContrast.recommendedTextColorForRegion(
+                            widgetBackground, widgetBackground.width.toFloat(), widgetBackground.height.toFloat(),
+                            RectF(0f, widgetBackground.height * 0.76f,
+                                widgetBackground.width.toFloat(), widgetBackground.height.toFloat())
+                        )
+                    } else textColor
+                    views.setTextColor(R.id.widget_title, titleColor)
+                    views.setTextColor(R.id.widget_target_date, targetDateColor)
+                    listOf(R.id.widget_days_value, R.id.widget_time_value, R.id.widget_days_label)
                         .forEach { views.setTextColor(it, textColor) }
                     val drawable = when {
                         personal && prefs.cubeStyle == CountdownPrefs.CUBES_LIGHT -> R.drawable.widget_cube_light

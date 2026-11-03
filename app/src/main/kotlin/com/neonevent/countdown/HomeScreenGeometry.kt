@@ -61,12 +61,13 @@ object HomeScreenGeometryCalculator {
             else maxOf(dayWidthDp / 1.25f, dayTextBlockDp + 14f)
         } else 0f
 
-        val titleBaselineDp = heightDp * (if (isLandscape) 0.10f else 0.205f)
-        val dayTopDp = if (isLandscape) {
-            maxOf(heightDp * 0.18f, titleBaselineDp + 34f * fontScale * 0.65f + 4f)
+        val upperContentLiftDp = minOf(8f, heightDp * 0.015f)
+        val titleBaselineDp = heightDp * (if (isLandscape) 0.10f else 0.205f) - upperContentLiftDp
+        val dayTopDp = (if (isLandscape) {
+            maxOf(heightDp * 0.18f, titleBaselineDp + upperContentLiftDp + 34f * fontScale * 0.65f + 4f)
         } else {
-            maxOf(heightDp * 0.275f, titleBaselineDp + 34f * fontScale * 0.78f + 15f)
-        }
+            maxOf(heightDp * 0.275f, titleBaselineDp + upperContentLiftDp + 34f * fontScale * 0.78f + 15f)
+        }) - upperContentLiftDp
         val dayCard = if (showDays) {
             HomeCardRect(
                 left = (widthDp - dayWidthDp) / 2f * safeDensity,
@@ -89,7 +90,7 @@ object HomeScreenGeometryCalculator {
 
         val lowerBottomDp = if (count > 0) lowerTopDp + lowerHeightDp else
             if (showDays) dayTopDp + dayHeightDp else dayTopDp
-        val dateGapDp = if (isLandscape) 12f else 28f
+        val dateGapDp = if (isLandscape) 20f else 36f
         val dateBaselineDp = maxOf(lowerBottomDp + dateGapDp, heightDp * 0.60f)
         val quoteBaselineDp = dateBaselineDp + (if (isLandscape) 12f else 28f)
         val quoteMaxHeightDp = (heightDp - (if (isLandscape) 2f else 16f) - quoteBaselineDp).coerceAtLeast(0f)

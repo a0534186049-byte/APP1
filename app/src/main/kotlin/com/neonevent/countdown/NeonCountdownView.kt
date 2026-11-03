@@ -86,8 +86,10 @@ object NeonCountdownRenderer {
             canvas.drawRect(0f, 0f, w, h, paint)
             paint.shader = null
         }
-        paint.color = if (theme == CountdownPrefs.THEME_GRADIENT) 0x15050A18 else 0x22040A14
-        canvas.drawRect(0f, 0f, w, h, paint)
+        if (!isPersonal) {
+            paint.color = if (theme == CountdownPrefs.THEME_GRADIENT) 0x15050A18 else 0x22040A14
+            canvas.drawRect(0f, 0f, w, h, paint)
+        }
 
         val centerX = w / 2f
         val countdown = CountdownMath.calculateDateOnly(prefs.eventLocalDate(), nowMillis)
@@ -103,23 +105,19 @@ object NeonCountdownRenderer {
         )
 
         if (prefs.showTitle) {
-            if (isPersonal && (!isAutoContrast || autoTextColor == PersonalTextContrast.AUTO_LIGHT_TEXT)) {
-                PersonalTextContrast.drawForRegion(
-                    canvas, bitmap, w, h,
+            paint.color = if (isPersonal) {
+                PersonalTextContrast.recommendedTextColorForRegion(
+                    bitmap, w, h,
                     RectF(w * 0.06f, geometry.titleBaseline - prefs.sp(41f),
-                        w * 0.94f, geometry.titleBaseline + prefs.sp(8f)),
-                    paint
+                        w * 0.94f, geometry.titleBaseline + prefs.sp(8f))
                 )
-            }
-            paint.color = if (isPersonal) textColor else accent
+            } else accent
             paint.textAlign = Paint.Align.CENTER
             paint.typeface = prefs.homeHeadingTypeface()
             val title = prefs.eventTitle.ifBlank { "הרגע הגדול מתקרב" }
             val fittedTitle = fitCenteredText(paint, title, prefs.sp(34f), prefs.sp(18f), w * 0.86f)
-            if (!isAutoContrast || autoTextColor != PersonalTextContrast.AUTO_DARK_TEXT) {
-                if (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM || isPersonal) {
-                    paint.setShadowLayer(w * 0.008f, 0f, prefs.dp(2f), 0xA0000000.toInt())
-                }
+            if (!isPersonal && (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM)) {
+                paint.setShadowLayer(w * 0.008f, 0f, prefs.dp(2f), 0xA0000000.toInt())
             }
             canvas.drawText(fittedTitle, centerX, geometry.titleBaseline, paint)
             paint.clearShadowLayer()
@@ -213,59 +211,49 @@ object NeonCountdownRenderer {
         }
 
         if (countdown.complete) {
-            if (isPersonal && (!isAutoContrast || autoTextColor == PersonalTextContrast.AUTO_LIGHT_TEXT)) {
-                PersonalTextContrast.drawForRegion(
-                    canvas, bitmap, w, h,
-                    RectF(w * 0.06f, h * 0.245f - prefs.sp(25f),
-                        w * 0.94f, h * 0.245f + prefs.sp(8f)),
-                    paint
-                )
-            }
             paint.textAlign = Paint.Align.CENTER
             paint.typeface = Typeface.create(prefs.homeBodyTypeface(), Typeface.BOLD)
             val completeText = fitCenteredText(paint, "האירוע כבר הגיע", prefs.sp(25f), prefs.sp(17f), w * 0.88f)
-            paint.color = accent
-            paint.setShadowLayer(prefs.dp(3f), 0f, prefs.dp(2f), 0xA0000000.toInt())
+            paint.color = if (isPersonal) {
+                PersonalTextContrast.recommendedTextColorForRegion(
+                    bitmap, w, h,
+                    RectF(w * 0.06f, h * 0.245f - prefs.sp(25f),
+                        w * 0.94f, h * 0.245f + prefs.sp(8f))
+                )
+            } else accent
+            if (!isPersonal) paint.setShadowLayer(prefs.dp(3f), 0f, prefs.dp(2f), 0xA0000000.toInt())
             canvas.drawText(completeText, centerX, h * 0.245f, paint)
             paint.clearShadowLayer()
         }
 
-        if (isPersonal && (!isAutoContrast || autoTextColor == PersonalTextContrast.AUTO_LIGHT_TEXT)) {
-            PersonalTextContrast.drawForRegion(
-                canvas, bitmap, w, h,
-                RectF(w * 0.06f, geometry.dateBaseline - prefs.sp(23f),
-                    w * 0.94f, geometry.dateBaseline + prefs.sp(7f)),
-                paint
-            )
-        }
         paint.textAlign = Paint.Align.CENTER
         paint.typeface = prefs.homeBodyTypeface()
-        paint.color = accent
+        paint.color = if (isPersonal) {
+            PersonalTextContrast.recommendedTextColorForRegion(
+                bitmap, w, h,
+                RectF(w * 0.06f, geometry.dateBaseline - prefs.sp(23f),
+                    w * 0.94f, geometry.dateBaseline + prefs.sp(7f))
+            )
+        } else accent
         val dateText = fitCenteredText(
             paint, prefs.formattedTargetDate(), prefs.sp(20f), prefs.sp(15f), w * 0.90f
         )
-        if (!isAutoContrast || autoTextColor != PersonalTextContrast.AUTO_DARK_TEXT) {
-            paint.setShadowLayer(prefs.dp(2f), 0f, prefs.dp(1f), 0x99000000.toInt())
-        }
+        if (!isPersonal) paint.setShadowLayer(prefs.dp(2f), 0f, prefs.dp(1f), 0x99000000.toInt())
         canvas.drawText(dateText, centerX, geometry.dateBaseline, paint)
         paint.clearShadowLayer()
 
         val quote = prefs.dailyQuote(nowMillis)
         if (quote.isNotBlank()) {
-            if (isPersonal && (!isAutoContrast || autoTextColor == PersonalTextContrast.AUTO_LIGHT_TEXT)) {
-                PersonalTextContrast.drawForRegion(
-                    canvas, bitmap, w, h,
-                    RectF(w * 0.05f, geometry.quoteBaseline - prefs.sp(22f),
-                        w * 0.95f, geometry.quoteBaseline + geometry.quoteMaxHeight + prefs.sp(5f)),
-                    paint
-                )
-            }
             paint.typeface = prefs.homeBodyTypeface()
-            paint.color = textColor
+            paint.color = if (isPersonal) {
+                PersonalTextContrast.recommendedTextColorForRegion(
+                    bitmap, w, h,
+                    RectF(w * 0.05f, geometry.quoteBaseline - prefs.sp(22f),
+                        w * 0.95f, geometry.quoteBaseline + geometry.quoteMaxHeight + prefs.sp(5f))
+                )
+            } else textColor
             paint.textAlign = Paint.Align.CENTER
-            if (!isAutoContrast || autoTextColor != PersonalTextContrast.AUTO_DARK_TEXT) {
-                paint.setShadowLayer(prefs.dp(3f), 0f, prefs.dp(1f), 0xC0000000.toInt())
-            }
+            if (!isPersonal) paint.setShadowLayer(prefs.dp(3f), 0f, prefs.dp(1f), 0xC0000000.toInt())
             drawWrappedCenteredText(
                 canvas = canvas,
                 text = quote,

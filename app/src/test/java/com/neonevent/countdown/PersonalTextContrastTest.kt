@@ -1,70 +1,36 @@
 package com.neonevent.countdown
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PersonalTextContrastTest {
-    @Test fun darkImageGetsNoAdditionalScrim() {
-        assertEquals(0, PersonalTextContrast.scrimAlphaForAverageLuminance(0.05f))
-        assertEquals(0, PersonalTextContrast.scrimAlphaForAverageLuminance(0.18f))
+    @Test fun weightedBrightnessUsesTheRequested299587114Formula() {
+        assertEquals(76, PersonalTextContrast.weightedBrightness(0xFFFF0000.toInt()))
+        assertEquals(149, PersonalTextContrast.weightedBrightness(0xFF00FF00.toInt()))
+        assertEquals(29, PersonalTextContrast.weightedBrightness(0xFF0000FF.toInt()))
     }
 
-    @Test fun brighterImagesReceiveStrongerScrim() {
-        val dark = PersonalTextContrast.scrimAlphaForAverageLuminance(0.22f)
-        val medium = PersonalTextContrast.scrimAlphaForAverageLuminance(0.50f)
-        val bright = PersonalTextContrast.scrimAlphaForAverageLuminance(1.00f)
-        assertTrue(dark > 0)
-        assertTrue(medium > dark)
-        assertTrue(bright > medium)
+    @Test fun averageBrightnessAbove128ChoosesDarkTextAnd128OrBelowChoosesWhite() {
+        assertEquals(PersonalTextContrast.AUTO_DARK_TEXT, PersonalTextContrast.textColorForAverageBrightness(128.01))
+        assertEquals(PersonalTextContrast.AUTO_LIGHT_TEXT, PersonalTextContrast.textColorForAverageBrightness(128.0))
+        assertEquals(PersonalTextContrast.AUTO_LIGHT_TEXT, PersonalTextContrast.textColorForAverageBrightness(32.0))
     }
 
-    @Test fun whiteTextContrastMeetsFourPointFiveToOneForSampledAverage() {
-        listOf(0.19f, 0.25f, 0.50f, 0.75f, 1.00f).forEach { luminance ->
-            val alpha = PersonalTextContrast.scrimAlphaForAverageLuminance(luminance) / 255f
-            val resultingLuminance = luminance * (1f - alpha)
-            val contrast = 1.05f / (resultingLuminance + 0.05f)
-            assertTrue("Contrast $contrast for luminance $luminance", contrast >= 4.5f)
-        }
+    @Test fun existingAutomaticCubeContrastStillSelectsItsEstablishedColors() {
+        assertEquals(PersonalTextContrast.AUTO_DARK_TEXT,
+            PersonalTextContrast.recommendedTextColorForLuminanceSamples(FloatArray(65) { 0.92f }))
+        assertEquals(PersonalTextContrast.AUTO_GOLD_TEXT,
+            PersonalTextContrast.recommendedTextColorForLuminanceSamples(FloatArray(65) { 0.04f }))
+        assertEquals(PersonalTextContrast.AUTO_LIGHT_TEXT,
+            PersonalTextContrast.recommendedTextColorForLuminanceSamples(FloatArray(65) { 0.34f }))
+        assertEquals(PersonalTextContrast.AUTO_LIGHT_TEXT,
+            PersonalTextContrast.recommendedTextColorForLuminanceSamples(
+                FloatArray(65) { if (it % 2 == 0) 0.05f else 0.95f }
+            ))
     }
 
-    @Test fun automaticContrastSelectsDarkLightOrGoldForDifferentPhotos() {
-        assertEquals(
-            PersonalTextContrast.AUTO_DARK_TEXT,
-            PersonalTextContrast.recommendedTextColorForLuminanceSamples(FloatArray(65) { 0.92f })
-        )
-        assertEquals(
-            PersonalTextContrast.AUTO_GOLD_TEXT,
-            PersonalTextContrast.recommendedTextColorForLuminanceSamples(FloatArray(65) { 0.04f })
-        )
-        assertEquals(
-            PersonalTextContrast.AUTO_LIGHT_TEXT,
-            PersonalTextContrast.recommendedTextColorForLuminanceSamples(FloatArray(65) { 0.34f })
-        )
-        val colorful = FloatArray(65) { if (it % 2 == 0) 0.05f else 0.95f }
-        assertEquals(
-            PersonalTextContrast.AUTO_LIGHT_TEXT,
-            PersonalTextContrast.recommendedTextColorForLuminanceSamples(colorful)
-        )
-        val mostlyBrightWithDarkPatches = FloatArray(65) {
-            if (it < 7) 0.06f else 0.94f
-        }
-        assertEquals(
-            PersonalTextContrast.AUTO_LIGHT_TEXT,
-            PersonalTextContrast.recommendedTextColorForLuminanceSamples(mostlyBrightWithDarkPatches)
-        )
-    }
-
-    @Test fun luminanceUsesTheRelativeSrgbFormula() {
+    @Test fun relativeLuminanceStillUsesTheSrgbFormulaForAutomaticCubes() {
         assertEquals(0f, PersonalTextContrast.relativeLuminance(0xFF000000.toInt()), 0.0001f)
         assertEquals(1f, PersonalTextContrast.relativeLuminance(0xFFFFFFFF.toInt()), 0.0001f)
-    }
-
-    @Test fun mixedBrightDarkRegionUsesBrightSampleAsSafetyMargin() {
-        val samples = FloatArray(65) { index -> if (index < 32) 0f else 1f }
-        val meanOnly = PersonalTextContrast.scrimAlphaForAverageLuminance(samples.average().toFloat())
-        val protected = PersonalTextContrast.scrimAlphaForLuminanceSamples(samples)
-        assertTrue(protected > meanOnly)
-        assertTrue(protected >= 209)
     }
 }

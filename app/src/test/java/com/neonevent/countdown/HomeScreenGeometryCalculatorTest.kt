@@ -91,7 +91,7 @@ class HomeScreenGeometryCalculatorTest {
             )
             assertTrue(
                 "Portrait gap was too small for ${width}x${height}",
-                layout.dateBaseline - layout.lowerCards.last().bottom >= 28f
+                layout.dateBaseline - layout.lowerCards.last().bottom >= 36f
             )
             assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= height + 0.01f)
             assertTrue(layout.quoteMaxHeight >= 0f)
@@ -109,7 +109,7 @@ class HomeScreenGeometryCalculatorTest {
             )
             assertTrue(
                 "Landscape gap was too small for ${width}x${height}",
-                layout.dateBaseline - layout.lowerCards.last().bottom >= 12f
+                layout.dateBaseline - layout.lowerCards.last().bottom >= 20f
             )
             assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= height + 0.01f)
             assertTrue(layout.quoteMaxHeight >= 0f)
@@ -126,7 +126,7 @@ class HomeScreenGeometryCalculatorTest {
                 showDays = true,
                 lowerCount = 3
             )
-            assertTrue(layout.dateBaseline >= layout.lowerCards.last().bottom + 28f)
+            assertTrue(layout.dateBaseline >= layout.lowerCards.last().bottom + 36f)
             assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= 780f + 0.01f)
             assertTrue(layout.quoteMaxHeight >= 0f)
         }

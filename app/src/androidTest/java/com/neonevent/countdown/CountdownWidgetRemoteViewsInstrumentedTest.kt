@@ -4,6 +4,7 @@ import android.os.SystemClock
 import android.view.View
 import android.widget.Chronometer
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.RemoteViews
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -26,7 +27,10 @@ class CountdownWidgetRemoteViewsInstrumentedTest {
         assertNotNull(inflated.findViewById<View>(R.id.widget_background))
         assertNotNull(inflated.findViewById<View>(R.id.widget_days_value))
         assertNotNull(inflated.findViewById<View>(R.id.widget_time_value))
-        assertNotNull(inflated.findViewById<View>(R.id.widget_time_label))
+        val timeCube = inflated.findViewById<LinearLayout>(R.id.widget_cube_time)
+        assertNotNull(timeCube)
+        assertEquals("Time cube should only contain the Chronometer; the label was removed.", 1, timeCube.childCount)
+        assertNotNull(inflated.findViewById<View>(R.id.widget_background_overlay))
     }
 
     @Test fun attachedRemoteViewsChronometerUsesFixedHourFormatsWhileCountingDown() {

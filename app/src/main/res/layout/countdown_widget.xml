@@ -15,6 +15,7 @@
         android:scaleType="fitCenter" />
 
     <FrameLayout
+        android:id="@+id/widget_background_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#78040A16" />
@@ -106,16 +107,7 @@
                     android:textSize="22sp"
                     android:maxLines="1" />
 
-                <TextView
-                    android:id="@+id/widget_time_label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:text="עד חצות"
-                    android:textColor="#FFFFE8B2"
-                    android:fontFamily="@font/frank_ruhl_libre_variable"
-                    android:fontVariationSettings="'wght' 500"
-                    android:textSize="8sp" />
+
             </LinearLayout>
         </LinearLayout>
 

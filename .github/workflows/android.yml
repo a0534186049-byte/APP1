@@ -131,7 +131,7 @@ jobs:
           echo "RELEASE_KEY_ALIAS=$ALIAS" >> "$GITHUB_ENV"
 
       - name: Run unit tests and build Debug and Release
-        run: gradle --no-daemon clean testDebugUnitTest assembleDebug assembleRelease
+        run: gradle --no-daemon clean lint testDebugUnitTest assembleDebug assembleRelease
 
       - name: Enable KVM for Android emulator
         run: |
