@@ -78,7 +78,11 @@ object NeonCountdownRenderer {
         }
         canvas.drawColor(backdrop)
         if (bitmap != null && !bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) {
-            BackgroundEdgeFiller.draw(canvas, bitmap, w, h, paint)
+            if (isPersonal) {
+                BackgroundEdgeFiller.draw(canvas, bitmap, w, h, paint)
+            } else {
+                BackgroundEdgeFiller.drawCenterCrop(canvas, bitmap, w, h, paint)
+            }
         } else {
             paint.shader = LinearGradient(0f, 0f, w, h,
                 intArrayOf(Color.rgb(5, 9, 22), Color.rgb(18, 20, 48), Color.rgb(6, 8, 20)),

@@ -128,12 +128,11 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
                         )
                     }
 
+                    val personal = prefs.theme == CountdownPrefs.THEME_PERSONAL
                     val widgetBackground = widgetBackgroundBitmap(
-                        context, manager.getAppWidgetOptions(id), prefs.backgroundBitmap(), showTitle
+                        context, manager.getAppWidgetOptions(id), prefs.backgroundBitmap(), showTitle, personal
                     )
                     widgetBackground?.let { views.setImageViewBitmap(R.id.widget_background, it) }
-
-                    val personal = prefs.theme == CountdownPrefs.THEME_PERSONAL
                     views.setViewVisibility(
                         R.id.widget_background_overlay,
                         if (personal) View.GONE else View.VISIBLE
@@ -187,7 +186,8 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             context: Context,
             options: Bundle,
             source: Bitmap?,
-            showTitle: Boolean
+            showTitle: Boolean,
+            personal: Boolean
         ): Bitmap? {
             if (source == null || source.isRecycled || source.width <= 0 || source.height <= 0) return null
 
@@ -205,7 +205,11 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             val output = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.RGB_565)
             val canvas = Canvas(output)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-            BackgroundEdgeFiller.draw(canvas, source, widthPx.toFloat(), heightPx.toFloat(), paint)
+            if (personal) {
+                BackgroundEdgeFiller.draw(canvas, source, widthPx.toFloat(), heightPx.toFloat(), paint)
+            } else {
+                BackgroundEdgeFiller.drawCenterCrop(canvas, source, widthPx.toFloat(), heightPx.toFloat(), paint)
+            }
             return output
         }
     }

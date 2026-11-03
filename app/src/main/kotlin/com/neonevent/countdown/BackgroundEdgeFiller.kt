@@ -121,6 +121,38 @@ object BackgroundEdgeFiller {
         paint.isFilterBitmap = true
     }
 
+    /**
+     * Center-crops a built-in theme image to fill the destination without distortion.
+     * The destination rectangle is scaled around the center (CENTER_CROP / Gravity.CENTER
+     * positioning); anything outside the viewport is clipped, never tiled or stretched.
+     */
+    fun drawCenterCrop(canvas: Canvas, bitmap: Bitmap, width: Float, height: Float, paint: Paint) {
+        if (width <= 0f || height <= 0f || bitmap.isRecycled || bitmap.width <= 0 || bitmap.height <= 0) return
+
+        val scale = maxOf(width / bitmap.width.toFloat(), height / bitmap.height.toFloat())
+        val drawWidth = bitmap.width * scale
+        val drawHeight = bitmap.height * scale
+        val destination = RectF(
+            (width - drawWidth) / 2f,
+            (height - drawHeight) / 2f,
+            (width + drawWidth) / 2f,
+            (height + drawHeight) / 2f
+        )
+
+        val saveCount = canvas.save()
+        canvas.clipRect(0f, 0f, width, height)
+        paint.shader = null
+        paint.style = Paint.Style.FILL
+        paint.color = Color.WHITE
+        paint.alpha = 255
+        paint.isFilterBitmap = true
+        canvas.drawBitmap(bitmap, null, destination, paint)
+        canvas.restoreToCount(saveCount)
+        paint.shader = null
+        paint.alpha = 255
+        paint.isFilterBitmap = true
+    }
+
     private fun drawVerticalBands(
         canvas: Canvas, left: Float, right: Float, top: Float, bottom: Float,
         colors: IntArray, paint: Paint

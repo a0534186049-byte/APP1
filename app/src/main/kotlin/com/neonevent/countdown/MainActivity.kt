@@ -91,7 +91,11 @@ class MainActivity : ComponentActivity() {
         settingsBackCallback.isEnabled = true
         val frame = FrameLayout(this).apply { layoutDirection = View.LAYOUT_DIRECTION_RTL; setBackgroundColor(ink) }
         val background = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.FIT_CENTER
+            scaleType = if (prefs.theme == CountdownPrefs.THEME_PERSONAL) {
+                ImageView.ScaleType.FIT_CENTER
+            } else {
+                ImageView.ScaleType.CENTER_CROP
+            }
             setImageBitmap(prefs.backgroundBitmap())
             alpha = 0.56f
         }
@@ -146,7 +150,7 @@ class MainActivity : ComponentActivity() {
             }
             val preview = ImageView(this).apply {
                 setImageBitmap(prefs.backgroundBitmapForTheme(i))
-                scaleType = ImageView.ScaleType.FIT_CENTER
+                scaleType = ImageView.ScaleType.CENTER_CROP
                 contentDescription = labels[i]
             }
             tile.addView(preview, LinearLayout.LayoutParams(-1, dp(116)))
