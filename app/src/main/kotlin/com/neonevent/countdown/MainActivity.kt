@@ -134,34 +134,49 @@ class MainActivity : ComponentActivity() {
         card.addView(makeText("בחרו רקע מלא ומוכן. הצבעים והקוביות מותאמים לכל ערכה.", 14f, 0xFFCBD4E5.toInt(), false),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(12) })
 
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
+        val themeIndices = CountdownPrefs.builtInThemeIndices
         val labels = CountdownPrefs.themeNames
-        for (i in labels.indices) {
-            val tile = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setPadding(dp(5), dp(5), dp(5), dp(8))
-                background = roundBackground(if (prefs.theme == i) 0xCC24314B.toInt() else 0x66232C40, if (prefs.theme == i) gold else 0x668D9AB0, 14)
-                setOnClickListener {
-                    prefs.theme = i
-                    afterSettingsChanged()
-                    buildSettingsScreen()
+        themeIndices.chunked(3).forEachIndexed { rowIndex, group ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutDirection = View.LAYOUT_DIRECTION_RTL
+            }
+            group.forEachIndexed { position, themeIndex ->
+                val label = labels[themeIndices.indexOf(themeIndex)]
+                val selected = prefs.theme == themeIndex
+                val tile = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    setPadding(dp(5), dp(5), dp(5), dp(8))
+                    background = roundBackground(
+                        if (selected) 0xCC24314B.toInt() else 0x66232C40,
+                        if (selected) gold else 0x668D9AB0,
+                        14
+                    )
+                    setOnClickListener {
+                        prefs.theme = themeIndex
+                        afterSettingsChanged()
+                        buildSettingsScreen()
+                    }
                 }
+                val preview = ImageView(this).apply {
+                    setImageBitmap(prefs.backgroundBitmapForTheme(themeIndex))
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    contentDescription = label
+                }
+                tile.addView(preview, LinearLayout.LayoutParams(-1, dp(116)))
+                tile.addView(makeText(label, 12.5f, Color.WHITE, selected).apply { gravity = Gravity.CENTER },
+                    LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
+                row.addView(tile, LinearLayout.LayoutParams(0, -2, 1f).apply {
+                    if (position > 0) marginStart = dp(5)
+                    if (position < group.lastIndex) marginEnd = dp(5)
+                })
             }
-            val preview = ImageView(this).apply {
-                setImageBitmap(prefs.backgroundBitmapForTheme(i))
-                scaleType = ImageView.ScaleType.CENTER_CROP
-                contentDescription = labels[i]
-            }
-            tile.addView(preview, LinearLayout.LayoutParams(-1, dp(116)))
-            tile.addView(makeText(labels[i], 12.5f, Color.WHITE, prefs.theme == i).apply { gravity = Gravity.CENTER },
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
-            row.addView(tile, LinearLayout.LayoutParams(0, -2, 1f).apply {
-                if (i != 0) marginStart = dp(5)
-                if (i != 2) marginEnd = dp(5)
+            repeat(3 - group.size) { row.addView(View(this), LinearLayout.LayoutParams(0, dp(1), 1f)) }
+            card.addView(row, LinearLayout.LayoutParams(-1, -2).apply {
+                if (rowIndex > 0) topMargin = dp(8)
             })
         }
-        card.addView(row, LinearLayout.LayoutParams(-1, -2))
 
         card.addView(makeButton("▧  בחירת תמונה אישית מהמכשיר") { choosePersonalImage() },
             LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12) })

@@ -128,51 +128,19 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
                         )
                     }
 
-                    val personal = prefs.theme == CountdownPrefs.THEME_PERSONAL
                     val widgetBackground = widgetBackgroundBitmap(
-                        context, manager.getAppWidgetOptions(id), prefs.backgroundBitmap(), showTitle, personal
+                        context, manager.getAppWidgetOptions(id), prefs.widgetBackgroundBitmap(), showTitle, false
                     )
                     widgetBackground?.let { views.setImageViewBitmap(R.id.widget_background, it) }
-                    views.setViewVisibility(
-                        R.id.widget_background_overlay,
-                        if (personal) View.GONE else View.VISIBLE
-                    )
-                    val auto = personal && prefs.cubeStyle == CountdownPrefs.CUBES_AUTO
-                    val autoTextColor = if (auto) prefs.personalAutoContrastTextColor() else Color.WHITE
-                    val autoDark = auto && autoTextColor == PersonalTextContrast.AUTO_DARK_TEXT
-                    val textColor = when {
-                        auto -> autoTextColor
-                        personal && prefs.cubeStyle != CountdownPrefs.CUBES_DARK -> 0xFF182033.toInt()
-                        prefs.theme == CountdownPrefs.THEME_GOLD -> 0xFFFFE8B2.toInt()
-                        prefs.theme == CountdownPrefs.THEME_PREMIUM -> 0xFFFFF0D8.toInt()
-                        else -> Color.WHITE
-                    }
-                    val titleColor = if (personal && widgetBackground != null) {
-                        PersonalTextContrast.recommendedTextColorForRegion(
-                            widgetBackground, widgetBackground.width.toFloat(), widgetBackground.height.toFloat(),
-                            RectF(0f, 0f, widgetBackground.width.toFloat(), widgetBackground.height * 0.24f)
-                        )
-                    } else textColor
-                    val targetDateColor = if (personal && widgetBackground != null) {
-                        PersonalTextContrast.recommendedTextColorForRegion(
-                            widgetBackground, widgetBackground.width.toFloat(), widgetBackground.height.toFloat(),
-                            RectF(0f, widgetBackground.height * 0.76f,
-                                widgetBackground.width.toFloat(), widgetBackground.height.toFloat())
-                        )
-                    } else textColor
-                    views.setTextColor(R.id.widget_title, titleColor)
-                    views.setTextColor(R.id.widget_target_date, targetDateColor)
+                    // A dedicated fixed background protects widget aspect ratio and text contrast.
+                    views.setViewVisibility(R.id.widget_background_overlay, View.VISIBLE)
+                    views.setTextColor(R.id.widget_title, 0xFFFFF2D7.toInt())
+                    views.setTextColor(R.id.widget_target_date, 0xFFFFE8B2.toInt())
                     listOf(R.id.widget_days_value, R.id.widget_time_value, R.id.widget_days_label)
-                        .forEach { views.setTextColor(it, textColor) }
-                    val drawable = when {
-                        personal && prefs.cubeStyle == CountdownPrefs.CUBES_LIGHT -> R.drawable.widget_cube_light
-                        personal && prefs.cubeStyle == CountdownPrefs.CUBES_FROSTED -> R.drawable.widget_cube_frosted
-                        auto -> if (autoDark) R.drawable.widget_cube_light else R.drawable.widget_cube_premium
-                        prefs.theme == CountdownPrefs.THEME_GOLD -> R.drawable.widget_cube_gold
-                        prefs.theme == CountdownPrefs.THEME_GRADIENT -> R.drawable.widget_cube_gradient
-                        else -> R.drawable.widget_cube_premium
+                        .forEach { views.setTextColor(it, 0xFFFFE8B2.toInt()) }
+                    listOf(R.id.widget_cube_days, R.id.widget_cube_time).forEach {
+                        views.setInt(it, "setBackgroundResource", R.drawable.widget_cube_gold)
                     }
-                    listOf(R.id.widget_cube_days, R.id.widget_cube_time).forEach { views.setInt(it, "setBackgroundResource", drawable) }
                     manager.updateAppWidget(id, views)
                 }
             } catch (e: Exception) {

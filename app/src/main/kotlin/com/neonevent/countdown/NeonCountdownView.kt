@@ -55,16 +55,19 @@ object NeonCountdownRenderer {
         val isPersonal = theme == CountdownPrefs.THEME_PERSONAL
         val isAutoContrast = isPersonal && prefs.cubeStyle == CountdownPrefs.CUBES_AUTO
         val autoTextColor = if (isAutoContrast) prefs.personalAutoContrastTextColor() else Color.WHITE
-        val textColor = if (isAutoContrast) autoTextColor else Color.WHITE
+        val textColor = if (theme == CountdownPrefs.THEME_IVORY) Color.rgb(61, 43, 27)
+            else if (isAutoContrast) autoTextColor else Color.WHITE
         val accent = when (theme) {
             CountdownPrefs.THEME_GOLD -> Color.rgb(224, 185, 108)
             CountdownPrefs.THEME_GRADIENT -> Color.rgb(247, 241, 255)
             CountdownPrefs.THEME_PREMIUM -> Color.rgb(244, 210, 158)
-            else -> if (isAutoContrast) autoTextColor else Color.WHITE
+            CountdownPrefs.THEME_IVORY -> Color.rgb(91, 59, 27)
+            else -> if (isAutoContrast) autoTextColor else Color.rgb(244, 211, 155)
         }
         val dayNumberColor = when {
             isAutoContrast -> autoTextColor
             isPersonal && prefs.cubeStyle != CountdownPrefs.CUBES_DARK -> Color.rgb(24, 29, 42)
+            theme == CountdownPrefs.THEME_IVORY -> Color.rgb(61, 43, 27)
             else -> Color.WHITE
         }
 
@@ -72,8 +75,13 @@ object NeonCountdownRenderer {
         paint.style = Paint.Style.FILL
         val bitmap = prefs.backgroundBitmap()
         val backdrop = when (theme) {
-            CountdownPrefs.THEME_GRADIENT -> Color.rgb(20, 14, 47)
+            CountdownPrefs.THEME_GRADIENT, CountdownPrefs.THEME_VIOLET -> Color.rgb(20, 8, 38)
             CountdownPrefs.THEME_PREMIUM -> Color.rgb(5, 5, 32)
+            CountdownPrefs.THEME_NAVY -> Color.rgb(5, 14, 35)
+            CountdownPrefs.THEME_BURGUNDY -> Color.rgb(48, 5, 17)
+            CountdownPrefs.THEME_EMERALD -> Color.rgb(2, 34, 24)
+            CountdownPrefs.THEME_BLACK_GOLD -> Color.rgb(10, 9, 8)
+            CountdownPrefs.THEME_IVORY -> Color.rgb(235, 219, 190)
             else -> Color.rgb(4, 10, 18)
         }
         canvas.drawColor(backdrop)
@@ -155,7 +163,12 @@ object NeonCountdownRenderer {
                     fill = 0xD9151D2B.toInt(); stroke = 0xB8FFFFFF.toInt()
                     numberColor = Color.WHITE; labelColor = 0xFFE8EDF7.toInt()
                 }
-                theme == CountdownPrefs.THEME_GOLD -> {
+                theme == CountdownPrefs.THEME_IVORY -> {
+                    fill = 0xDDF7EBD7.toInt(); stroke = 0xD49A6A24.toInt()
+                    numberColor = 0xFF3D2B1B.toInt(); labelColor = 0xFF67451F.toInt()
+                }
+                theme == CountdownPrefs.THEME_GOLD ||
+                    theme in CountdownPrefs.THEME_NAVY..CountdownPrefs.THEME_BLACK_GOLD -> {
                     fill = 0xD20A111B.toInt(); stroke = 0xE0D9B06B.toInt()
                     numberColor = 0xFFFFE8B2.toInt(); labelColor = 0xFFF1D8A4.toInt()
                 }
