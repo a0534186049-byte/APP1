@@ -94,7 +94,8 @@ def verify_no_old_backgrounds() -> None:
     if not ASSET_DIR.is_dir():
         raise RuntimeError(f"Background directory not found: {ASSET_DIR}")
     present = {path.name for path in ASSET_DIR.iterdir() if path.is_file()}
-    expected = set(CROPS)
+    # The widget keeps its own landscape image; it is not an app theme.
+    expected = set(CROPS) | {"widget-navy-gold.webp"}
     if present != expected:
         raise RuntimeError(
             "Unexpected or missing files in backgrounds directory. "

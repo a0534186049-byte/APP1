@@ -42,7 +42,7 @@ class CountdownPrefs(context: Context) {
         const val THEME_GRADIENT = 1
         const val THEME_PREMIUM = 2
         const val THEME_PERSONAL = 3
-         const val CUBES_DARK = 0
+        const val CUBES_DARK = 0
         const val CUBES_LIGHT = 1
         const val CUBES_FROSTED = 2
         const val CUBES_AUTO = 3
@@ -291,7 +291,7 @@ class CountdownPrefs(context: Context) {
         val name = when (themeIndex) {
             THEME_GRADIENT -> "backgrounds/gradient.webp"
             THEME_PREMIUM -> "backgrounds/premium.webp"
-             else -> "backgrounds/gold.webp"
+            else -> "backgrounds/gold.webp"
         }
         return runCatching {
             appContext.assets.open(name).use { BitmapFactory.decodeStream(it) }
