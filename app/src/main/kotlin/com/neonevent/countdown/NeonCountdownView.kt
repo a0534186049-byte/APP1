@@ -26,7 +26,7 @@ class NeonCountdownView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val now = System.currentTimeMillis()
-        val parts = CountdownMath.calculateDateOnly(settings.targetMillis(now), now)
+        val parts = CountdownMath.calculateDateOnly(settings.eventLocalDate(), now)
         val key = settings.targetKey()
         if (parts.complete) lastCompletionKey = key else lastCompletionKey = ""
         NeonCountdownRenderer.draw(canvas, width.toFloat(), height.toFloat(), settings, now)
@@ -50,39 +50,39 @@ object NeonCountdownRenderer {
         if (width <= 0f || height <= 0f) return
         val w = width
         val h = height
+        val density = prefs.dp(1f)
         val theme = prefs.theme
         val isPersonal = theme == CountdownPrefs.THEME_PERSONAL
+        val isAutoContrast = isPersonal && prefs.cubeStyle == CountdownPrefs.CUBES_AUTO
+        val autoTextColor = if (isAutoContrast) prefs.personalAutoContrastTextColor() else Color.WHITE
+        val textColor = if (isAutoContrast) autoTextColor else Color.WHITE
         val accent = when (theme) {
             CountdownPrefs.THEME_GOLD -> Color.rgb(224, 185, 108)
             CountdownPrefs.THEME_GRADIENT -> Color.rgb(247, 241, 255)
             CountdownPrefs.THEME_PREMIUM -> Color.rgb(244, 210, 158)
-            else -> when (prefs.cubeStyle) {
-                CountdownPrefs.CUBES_LIGHT -> Color.rgb(28, 34, 48)
-                else -> Color.rgb(255, 255, 255)
-            }
+            else -> if (isAutoContrast) autoTextColor else Color.rgb(244, 211, 155)
         }
-        val textColor = Color.WHITE
-        val dayNumberColor = if (isPersonal && prefs.cubeStyle != CountdownPrefs.CUBES_DARK) Color.rgb(24, 29, 42) else Color.WHITE
+        val dayNumberColor = when {
+            isAutoContrast -> autoTextColor
+            isPersonal && prefs.cubeStyle != CountdownPrefs.CUBES_DARK -> Color.rgb(24, 29, 42)
+            else -> Color.WHITE
+        }
 
         paint.shader = null
         paint.style = Paint.Style.FILL
         val bitmap = prefs.backgroundBitmap()
         val backdrop = when (theme) {
-            CountdownPrefs.THEME_GRADIENT -> Color.rgb(20, 14, 47)
+            CountdownPrefs.THEME_GRADIENT -> Color.rgb(20, 8, 38)
             CountdownPrefs.THEME_PREMIUM -> Color.rgb(5, 5, 32)
             else -> Color.rgb(4, 10, 18)
         }
         canvas.drawColor(backdrop)
         if (bitmap != null && !bitmap.isRecycled && bitmap.width > 0 && bitmap.height > 0) {
-            paint.color = Color.WHITE
-            paint.alpha = 255
-            paint.isFilterBitmap = true
-            val scale = min(w / bitmap.width.toFloat(), h / bitmap.height.toFloat())
-            val drawW = bitmap.width * scale
-            val drawH = bitmap.height * scale
-            imageRect.set((w - drawW) / 2f, (h - drawH) / 2f,
-                (w + drawW) / 2f, (h + drawH) / 2f)
-            canvas.drawBitmap(bitmap, null, imageRect, paint)
+            if (isPersonal) {
+                BackgroundEdgeFiller.draw(canvas, bitmap, w, h, paint)
+            } else {
+                BackgroundEdgeFiller.drawCenterCrop(canvas, bitmap, w, h, paint)
+            }
         } else {
             paint.shader = LinearGradient(0f, 0f, w, h,
                 intArrayOf(Color.rgb(5, 9, 22), Color.rgb(18, 20, 48), Color.rgb(6, 8, 20)),
@@ -90,35 +90,45 @@ object NeonCountdownRenderer {
             canvas.drawRect(0f, 0f, w, h, paint)
             paint.shader = null
         }
-        paint.color = if (theme == CountdownPrefs.THEME_GRADIENT) 0x15050A18 else 0x22040A14
-        canvas.drawRect(0f, 0f, w, h, paint)
+        if (!isPersonal) {
+            paint.color = if (theme == CountdownPrefs.THEME_GRADIENT) 0x15050A18 else 0x22040A14
+            canvas.drawRect(0f, 0f, w, h, paint)
+        }
 
         val centerX = w / 2f
+        val countdown = CountdownMath.calculateDateOnly(prefs.eventLocalDate(), nowMillis)
+        val selected = (0..3).filter { prefs.isUnitVisible(it) }
+        val lower = selected.filter { it in 1..3 } // Physical order: hours left, minutes center, seconds right.
+        val geometry = HomeScreenGeometryCalculator.calculate(
+            widthPx = w,
+            heightPx = h,
+            density = density,
+            scaledDensity = prefs.sp(1f),
+            showDays = selected.contains(0),
+            lowerCount = lower.size
+        )
+
         if (prefs.showTitle) {
-            paint.color = if (isPersonal) textColor else accent
+            paint.color = if (isPersonal) {
+                PersonalTextContrast.recommendedTextColorForRegion(
+                    bitmap, w, h,
+                    RectF(w * 0.06f, geometry.titleBaseline - prefs.sp(41f),
+                        w * 0.94f, geometry.titleBaseline + prefs.sp(8f))
+                )
+            } else accent
             paint.textAlign = Paint.Align.CENTER
             paint.typeface = prefs.homeHeadingTypeface()
             val title = prefs.eventTitle.ifBlank { "הרגע הגדול מתקרב" }
-            val titleText = fitCenteredText(paint, title, prefs.sp(34f), prefs.sp(18f), w * 0.86f)
-            if (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM || isPersonal) {
-                paint.setShadowLayer(w * 0.008f, 0f, 2f, 0xA0000000.toInt())
+            val fittedTitle = fitCenteredText(paint, title, prefs.sp(34f), prefs.sp(18f), w * 0.86f)
+            if (!isPersonal && (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM)) {
+                paint.setShadowLayer(w * 0.008f, 0f, prefs.dp(2f), 0xA0000000.toInt())
             }
-            canvas.drawText(titleText, centerX, h * 0.205f, paint)
+            canvas.drawText(fittedTitle, centerX, geometry.titleBaseline, paint)
             paint.clearShadowLayer()
         }
 
-        val countdown = CountdownMath.calculateDateOnly(prefs.targetMillis(nowMillis), nowMillis)
-        val values = listOf(countdown.days, countdown.hours, countdown.minutes, countdown.seconds)
-        val labels = listOf("ימים", "שעות", "דקות", "שניות")
-        val selected = (0..3).filter { prefs.isUnitVisible(it) }
-        val side = w * 0.045f
-        val gap = w * 0.025f
-        val dayHeight = min(h * 0.115f, w * 0.31f).coerceAtLeast(64f)
-        val otherHeight = min(h * 0.105f, w * 0.235f).coerceAtLeast(58f)
-        val corner = min(w * 0.035f, 24f)
-
-        fun drawBox(index: Int, x: Float, top: Float, boxWidth: Float, boxHeight: Float) {
-            box.set(x, top, x + boxWidth, top + boxHeight)
+        fun drawBox(index: Int, bounds: HomeCardRect) {
+            box.set(bounds.left, bounds.top, bounds.right, bounds.bottom)
             val fill: Int
             val stroke: Int
             val numberColor: Int
@@ -131,6 +141,15 @@ object NeonCountdownRenderer {
                 isPersonal && prefs.cubeStyle == CountdownPrefs.CUBES_FROSTED -> {
                     fill = 0xA9F7F8FC.toInt(); stroke = 0xDDFEFFFF.toInt()
                     numberColor = dayNumberColor; labelColor = 0xFF303849.toInt()
+                }
+                isAutoContrast && autoTextColor == PersonalTextContrast.AUTO_DARK_TEXT -> {
+                    fill = 0xE8FFFFFF.toInt(); stroke = 0xD0FFFFFF.toInt()
+                    numberColor = autoTextColor; labelColor = 0xFF31394B.toInt()
+                }
+                isAutoContrast -> {
+                    fill = 0xD9151D2B.toInt(); stroke = 0xB8FFFFFF.toInt()
+                    numberColor = autoTextColor
+                    labelColor = if (autoTextColor == PersonalTextContrast.AUTO_GOLD_TEXT) 0xFFFFDFA4.toInt() else 0xFFE8EDF7.toInt()
                 }
                 isPersonal -> {
                     fill = 0xD9151D2B.toInt(); stroke = 0xB8FFFFFF.toInt()
@@ -149,83 +168,196 @@ object NeonCountdownRenderer {
                     numberColor = 0xFFFFF3DA.toInt(); labelColor = 0xFFF0D9BC.toInt()
                 }
             }
+
             paint.style = Paint.Style.FILL
             paint.color = fill
-            canvas.drawRoundRect(box, corner, corner, paint)
+            canvas.drawRoundRect(box, prefs.dp(16f), prefs.dp(16f), paint)
             paint.style = Paint.Style.STROKE
-            paint.strokeWidth = maxOf(1.5f, w * 0.0018f)
+            paint.strokeWidth = prefs.dp(1.5f)
             paint.color = stroke
-            canvas.drawRoundRect(box, corner, corner, paint)
+            canvas.drawRoundRect(box, prefs.dp(16f), prefs.dp(16f), paint)
             paint.style = Paint.Style.FILL
 
-            paint.textAlign = Paint.Align.CENTER
-            paint.typeface = Typeface.create(prefs.homeBodyTypeface(), Typeface.BOLD)
-            val digits = if (index == 0) valueAsHebrewDigits(values[index]) else String.format(Locale.ROOT, "%02d", values[index])
-            val numberText = fitCenteredText(paint, digits,
-                min(prefs.sp(if (index == 0) 44f else 39f), boxHeight * 0.44f),
-                prefs.sp(20f), boxWidth * 0.88f)
-            paint.color = numberColor
-            paint.setShadowLayer(if (!isPersonal && (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM)) 2f else 0f,
-                0f, 1f, 0x66000000)
-            canvas.drawText(numberText, x + boxWidth / 2f, top + boxHeight * 0.55f, paint)
-            paint.clearShadowLayer()
-
-            paint.typeface = prefs.homeBodyTypeface()
-            paint.color = labelColor
-            val labelText = fitCenteredText(paint, labels[index],
-                min(prefs.sp(17f), boxHeight * 0.24f), prefs.sp(13f), boxWidth * 0.90f)
-            canvas.drawText(labelText, x + boxWidth / 2f, top + boxHeight * 0.82f, paint)
+            val isDays = index == 0
+            val rawValue = if (isDays) countdown.days else when (index) {
+                1 -> countdown.hours
+                2 -> countdown.minutes
+                else -> countdown.seconds
+            }
+            val numberText = rawValue.toString()
+            val label = when (index) {
+                0 -> "ימים"
+                1 -> "שעות"
+                2 -> "דקות"
+                else -> "שניות"
+            }
+            drawCenteredPair(
+                canvas = canvas,
+                centerX = bounds.centerX,
+                centerY = bounds.centerY,
+                number = numberText,
+                label = label,
+                numberTypeface = prefs.homeHeadingTypeface(),
+                bodyTypeface = prefs.homeBodyTypeface(),
+                numberSize = prefs.sp(if (isDays) 44f else 39f),
+                labelSize = prefs.sp(17f),
+                maxWidth = bounds.width * 0.90f,
+                maxHeight = bounds.height * 0.90f,
+                numberColor = numberColor,
+                labelColor = labelColor,
+                shadow = !isPersonal && (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM)
+            )
         }
 
-        val dayTop = h * 0.275f
-        if (selected.contains(0)) {
-            val dayWidth = min(w * 0.42f, dayHeight * 1.42f)
-            drawBox(0, centerX - dayWidth / 2f, dayTop, dayWidth, dayHeight)
+        geometry.dayCard?.let { drawBox(0, it) }
+        lower.forEachIndexed { index, unit ->
+            geometry.lowerCards.getOrNull(index)?.let { drawBox(unit, it) }
         }
-        val lower = selected.filter { it in 1..3 }.asReversed()
-        val lowerTop = if (selected.contains(0)) dayTop + dayHeight + h * 0.025f else h * 0.34f
-        if (lower.isNotEmpty()) {
-            val lowerWidth = (w - side * 2f - gap * (lower.size - 1)).coerceAtLeast(80f) / lower.size
-            val totalWidth = lowerWidth * lower.size + gap * (lower.size - 1)
-            val left = (centerX - totalWidth / 2f).coerceAtLeast(0f)
-            lower.forEachIndexed { i, index -> drawBox(index, left + i * (lowerWidth + gap), lowerTop, lowerWidth, otherHeight) }
-        }
+
         if (countdown.complete) {
             paint.textAlign = Paint.Align.CENTER
             paint.typeface = Typeface.create(prefs.homeBodyTypeface(), Typeface.BOLD)
             val completeText = fitCenteredText(paint, "האירוע כבר הגיע", prefs.sp(25f), prefs.sp(17f), w * 0.88f)
-            paint.color = accent
-            paint.setShadowLayer(3f, 0f, 2f, 0xA0000000.toInt())
-            canvas.drawText(completeText, centerX, h * 0.25f, paint)
+            paint.color = if (isPersonal) {
+                PersonalTextContrast.recommendedTextColorForRegion(
+                    bitmap, w, h,
+                    RectF(w * 0.06f, h * 0.245f - prefs.sp(25f),
+                        w * 0.94f, h * 0.245f + prefs.sp(8f))
+                )
+            } else accent
+            if (!isPersonal) paint.setShadowLayer(prefs.dp(3f), 0f, prefs.dp(2f), 0xA0000000.toInt())
+            canvas.drawText(completeText, centerX, h * 0.245f, paint)
             paint.clearShadowLayer()
         }
 
-        val maxLowerBottom = if (lower.isNotEmpty()) lowerTop + otherHeight else dayTop + dayHeight
-        val targetY = maxOf(maxLowerBottom + h * 0.045f, h * 0.60f).coerceAtMost(h * 0.72f)
         paint.textAlign = Paint.Align.CENTER
         paint.typeface = prefs.homeBodyTypeface()
-        paint.color = accent
-        val dateText = fitCenteredText(paint, prefs.formattedTargetDate(), prefs.sp(20f), prefs.sp(15f), w * 0.90f)
-        paint.setShadowLayer(2f, 0f, 1f, 0x99000000.toInt())
-        canvas.drawText(dateText, centerX, targetY, paint)
+        paint.color = if (isPersonal) {
+            PersonalTextContrast.recommendedTextColorForRegion(
+                bitmap, w, h,
+                RectF(w * 0.06f, geometry.dateBaseline - prefs.sp(23f),
+                    w * 0.94f, geometry.dateBaseline + prefs.sp(7f))
+            )
+        } else accent
+        val dateText = fitCenteredText(
+            paint, prefs.formattedTargetDate(), prefs.sp(20f), prefs.sp(15f), w * 0.90f
+        )
+        if (!isPersonal) paint.setShadowLayer(prefs.dp(2f), 0f, prefs.dp(1f), 0x99000000.toInt())
+        canvas.drawText(dateText, centerX, geometry.dateBaseline, paint)
         paint.clearShadowLayer()
 
-        val quote = prefs.dailyQuote(nowMillis).ifBlank {
-            if (countdown.complete) "הספירה הסתיימה" else "כל שנייה מקרבת את הרגע"
+        val quote = prefs.dailyQuote(nowMillis)
+        if (quote.isNotBlank()) {
+            paint.typeface = prefs.homeBodyTypeface()
+            paint.color = if (isPersonal) {
+                PersonalTextContrast.recommendedTextColorForRegion(
+                    bitmap, w, h,
+                    RectF(w * 0.05f, geometry.quoteBaseline - prefs.sp(22f),
+                        w * 0.95f, geometry.quoteBaseline + geometry.quoteMaxHeight + prefs.sp(5f))
+                )
+            } else textColor
+            paint.textAlign = Paint.Align.CENTER
+            if (!isPersonal) paint.setShadowLayer(prefs.dp(3f), 0f, prefs.dp(1f), 0xC0000000.toInt())
+            drawWrappedCenteredText(
+                canvas = canvas,
+                text = quote,
+                centerX = centerX,
+                firstBaseline = geometry.quoteBaseline,
+                maxWidth = w * 0.90f,
+                textPaint = paint,
+                preferredSize = prefs.sp(18f),
+                minimumSize = prefs.sp(14f),
+                maxHeight = geometry.quoteMaxHeight
+            )
+            paint.clearShadowLayer()
         }
-        paint.typeface = prefs.homeBodyTypeface()
-        paint.color = Color.WHITE
+
+    }
+
+    private fun drawCenteredPair(
+        canvas: Canvas,
+        centerX: Float,
+        centerY: Float,
+        number: String,
+        label: String,
+        numberTypeface: Typeface,
+        bodyTypeface: Typeface,
+        numberSize: Float,
+        labelSize: Float,
+        maxWidth: Float,
+        maxHeight: Float,
+        numberColor: Int,
+        labelColor: Int,
+        shadow: Boolean
+    ) {
         paint.textAlign = Paint.Align.CENTER
-        paint.setShadowLayer(3f, 0f, 1f, 0xC0000000.toInt())
-        val quoteY = targetY + prefs.dp(28f)
-        val availableQuoteHeight = (h - prefs.dp(16f) - quoteY).coerceAtLeast(prefs.dp(18f))
-        drawWrappedCenteredText(canvas, quote, centerX, quoteY, w * 0.90f, paint,
-            prefs.sp(18f), prefs.sp(14f), availableQuoteHeight)
+        var chosenNumberSize = numberSize
+        var chosenLabelSize = labelSize
+        val minimumNumberSize = numberSize * 0.72f
+        val minimumLabelSize = labelSize * 0.75f
+
+        fun combinedTextHeight(): Float {
+            paint.typeface = numberTypeface
+            paint.textSize = chosenNumberSize
+            val numberMetrics = paint.fontMetrics
+            paint.typeface = bodyTypeface
+            paint.textSize = chosenLabelSize
+            val labelMetrics = paint.fontMetrics
+            return (numberMetrics.descent - numberMetrics.ascent) +
+                maxOf(2f, chosenNumberSize * 0.07f) +
+                (labelMetrics.descent - labelMetrics.ascent)
+        }
+
+        // Emergency-only font reduction: first let the responsive card grow; shrink
+        // only when even that card cannot hold the selected system font scale.
+        while (combinedTextHeight() > maxHeight &&
+            (chosenNumberSize > minimumNumberSize || chosenLabelSize > minimumLabelSize)
+        ) {
+            chosenNumberSize = (chosenNumberSize * 0.96f).coerceAtLeast(minimumNumberSize)
+            chosenLabelSize = (chosenLabelSize * 0.96f).coerceAtLeast(minimumLabelSize)
+        }
+
+        paint.typeface = numberTypeface
+        val fittedNumber = fitCenteredText(
+            paint, number, chosenNumberSize, chosenNumberSize * 0.82f, maxWidth
+        )
+        val numberTextSize = paint.textSize
+        val numberMetrics = paint.fontMetrics
+        val numberHeight = numberMetrics.descent - numberMetrics.ascent
+
+        paint.typeface = bodyTypeface
+        val fittedLabel = fitCenteredText(
+            paint, label, chosenLabelSize, chosenLabelSize * 0.88f, maxWidth
+        )
+        val labelTextSize = paint.textSize
+        val labelMetrics = paint.fontMetrics
+        val labelHeight = labelMetrics.descent - labelMetrics.ascent
+
+        val gap = maxOf(3f, chosenNumberSize * 0.14f)
+        val totalHeight = numberHeight + gap + labelHeight
+        val firstTop = centerY - totalHeight / 2f
+        val numberBaseline = firstTop - numberMetrics.ascent
+        val labelBaseline = firstTop + numberHeight + gap - labelMetrics.ascent
+
+        paint.typeface = numberTypeface
+        paint.textSize = numberTextSize
+        paint.color = numberColor
+        if (shadow) paint.setShadowLayer(2f, 0f, 1f, 0x66000000)
+        canvas.drawText(fittedNumber, centerX, numberBaseline, paint)
         paint.clearShadowLayer()
+
+        paint.typeface = bodyTypeface
+        paint.textSize = labelTextSize
+        paint.color = labelColor
+        canvas.drawText(fittedLabel, centerX, labelBaseline, paint)
     }
 
     private fun fitCenteredText(
-        textPaint: Paint, text: String, preferredSize: Float, minimumSize: Float, maxWidth: Float
+        textPaint: Paint,
+        text: String,
+        preferredSize: Float,
+        minimumSize: Float,
+        maxWidth: Float
     ): String {
         textPaint.textSize = preferredSize
         val step = maxOf(0.5f, preferredSize * 0.025f)
@@ -234,46 +366,13 @@ object NeonCountdownRenderer {
         }
         if (textPaint.measureText(text) <= maxWidth) return text
         var fitted = text
-        while (fitted.isNotEmpty() && textPaint.measureText("$fitted…") > maxWidth) fitted = fitted.dropLast(1)
-        return if (fitted.isEmpty()) "" else "$fitted…"
+        while (fitted.isNotEmpty() && textPaint.measureText("$fitted…") > maxWidth) {
+            fitted = fitted.dropLast(1)
+        }
+        return if (fitted.isEmpty()) "…" else "$fitted…"
     }
 
-    private fun valueAsHebrewDigits(value: Long): String {
-        var remaining = value.coerceAtLeast(0L).coerceAtMost(999L).toInt()
-        if (remaining == 0) return "0"
-        val out = StringBuilder()
-        while (remaining >= 400) { out.append('ת'); remaining -= 400 }
-        when {
-            remaining >= 300 -> { out.append('ש'); remaining -= 300 }
-            remaining >= 200 -> { out.append('ר'); remaining -= 200 }
-            remaining >= 100 -> { out.append('ק'); remaining -= 100 }
-        }
-        if (remaining == 15) { out.append("טו"); remaining = 0 }
-        else if (remaining == 16) { out.append("טז"); remaining = 0 }
-        else {
-            val tens = when {
-                remaining >= 90 -> 90; remaining >= 80 -> 80; remaining >= 70 -> 70
-                remaining >= 60 -> 60; remaining >= 50 -> 50; remaining >= 40 -> 40
-                remaining >= 30 -> 30; remaining >= 20 -> 20; remaining >= 10 -> 10
-                else -> 0
-            }
-            if (tens > 0) {
-                out.append(when (tens) {
-                    90 -> 'צ'; 80 -> 'פ'; 70 -> 'ע'; 60 -> 'ס'; 50 -> 'נ'
-                    40 -> 'מ'; 30 -> 'ל'; 20 -> 'כ'; else -> 'י'
-                })
-                remaining -= tens
-            }
-            if (remaining > 0) out.append(when (remaining) {
-                9 -> 'ט'; 8 -> 'ח'; 7 -> 'ז'; 6 -> 'ו'; 5 -> 'ה'
-                4 -> 'ד'; 3 -> 'ג'; 2 -> 'ב'; else -> 'א'
-            })
-        }
-        if (out.length == 1) out.append('׳') else out.insert(out.length - 1, '״')
-        return out.toString()
-    }
-
-    private fun wrapToWidth(text: String, paint: Paint, maxWidth: Float): MutableList<String> {
+    internal fun wrapToWidth(text: String, paint: Paint, maxWidth: Float): MutableList<String> {
         val lines = mutableListOf<String>()
         var current = ""
         for (word in text.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }) {
@@ -288,8 +387,15 @@ object NeonCountdownRenderer {
     }
 
     private fun drawWrappedCenteredText(
-        canvas: Canvas, text: String, centerX: Float, firstBaseline: Float, maxWidth: Float,
-        textPaint: Paint, preferredSize: Float, minimumSize: Float, maxHeight: Float
+        canvas: Canvas,
+        text: String,
+        centerX: Float,
+        firstBaseline: Float,
+        maxWidth: Float,
+        textPaint: Paint,
+        preferredSize: Float,
+        minimumSize: Float,
+        maxHeight: Float
     ) {
         if (text.isBlank() || maxWidth <= 0f || maxHeight <= 0f) return
         var size = preferredSize
@@ -301,16 +407,20 @@ object NeonCountdownRenderer {
             lines = wrapToWidth(text, textPaint, maxWidth)
             val metrics = textPaint.fontMetrics
             lineHeight = maxOf(size * 1.22f, metrics.descent - metrics.ascent)
-            maxLines = floor(maxHeight / lineHeight).toInt().coerceIn(1, 4)
+            maxLines = floor(maxHeight / lineHeight).toInt().coerceIn(1, 5)
             if (lines.size <= maxLines || size <= minimumSize) break
             size = (size - maxOf(0.75f, size * 0.04f)).coerceAtLeast(minimumSize)
         }
         if (lines.size > maxLines) {
             lines = lines.take(maxLines).toMutableList()
             var last = lines.last()
-            while (last.isNotEmpty() && textPaint.measureText("$last…") > maxWidth) last = last.dropLast(1)
+            while (last.isNotEmpty() && textPaint.measureText("$last…") > maxWidth) {
+                last = last.dropLast(1)
+            }
             lines[lines.lastIndex] = if (last.isEmpty()) "…" else "$last…"
         }
-        lines.forEachIndexed { index, line -> canvas.drawText(line, centerX, firstBaseline + index * lineHeight, textPaint) }
+        lines.forEachIndexed { index, line ->
+            canvas.drawText(line, centerX, firstBaseline + index * lineHeight, textPaint)
+        }
     }
 }
