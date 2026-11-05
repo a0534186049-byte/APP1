@@ -42,14 +42,7 @@ class CountdownPrefs(context: Context) {
         const val THEME_GRADIENT = 1
         const val THEME_PREMIUM = 2
         const val THEME_PERSONAL = 3
-        const val THEME_NAVY = 4
-        const val THEME_VIOLET = 5
-        const val THEME_BURGUNDY = 6
-        const val THEME_EMERALD = 7
-        const val THEME_BLACK_GOLD = 8
-        const val THEME_IVORY = 9
-
-        const val CUBES_DARK = 0
+         const val CUBES_DARK = 0
         const val CUBES_LIGHT = 1
         const val CUBES_FROSTED = 2
         const val CUBES_AUTO = 3
@@ -69,16 +62,8 @@ class CountdownPrefs(context: Context) {
         const val AV = 11
         const val ELUL = 12
 
-        val builtInThemeIndices = listOf(
-            THEME_GOLD, THEME_GRADIENT, THEME_PREMIUM,
-            THEME_NAVY, THEME_VIOLET, THEME_BURGUNDY,
-            THEME_EMERALD, THEME_BLACK_GOLD, THEME_IVORY
-        )
-        val themeNames = listOf(
-            "יוקרה בזהב", "מעבר צבעים מודרני", "תלת־ממד פרימיום",
-            "זהב וכחול עמוק", "זהב וסגול מלכותי", "זהב ובורדו",
-            "זהב וירוק אמרלד", "שחור וזהב", "זהב על שנהב"
-        )
+        val builtInThemeIndices = listOf(THEME_GOLD, THEME_GRADIENT, THEME_PREMIUM)
+        val themeNames = listOf("יוקרה בזהב", "מעבר צבעים מודרני", "תלת־ממד פרימיום")
         val cubeNames = listOf("כהה", "בהיר", "זכוכית", "ניגודי אוטומטי")
         private val hebrewLocale = Locale("he", "IL")
     }
@@ -88,7 +73,8 @@ class CountdownPrefs(context: Context) {
     }
 
     var theme: Int
-        get() = prefs.getInt("design_theme", THEME_GOLD).coerceIn(THEME_GOLD, THEME_IVORY)
+        get() = prefs.getInt("design_theme", THEME_GOLD)
+            .takeIf { it in THEME_GOLD..THEME_PERSONAL } ?: THEME_GOLD
         set(value) { prefs.edit().putInt("design_theme", value.coerceIn(THEME_GOLD, THEME_PERSONAL)).apply() }
 
     var personalImageUri: String?
@@ -305,13 +291,7 @@ class CountdownPrefs(context: Context) {
         val name = when (themeIndex) {
             THEME_GRADIENT -> "backgrounds/gradient.webp"
             THEME_PREMIUM -> "backgrounds/premium.webp"
-            THEME_NAVY -> "backgrounds/navy-gold.webp"
-            THEME_VIOLET -> "backgrounds/violet-gold.webp"
-            THEME_BURGUNDY -> "backgrounds/burgundy-gold.webp"
-            THEME_EMERALD -> "backgrounds/emerald-gold.webp"
-            THEME_BLACK_GOLD -> "backgrounds/black-gold.webp"
-            THEME_IVORY -> "backgrounds/ivory-gold.webp"
-            else -> "backgrounds/gold.webp"
+             else -> "backgrounds/gold.webp"
         }
         return runCatching {
             appContext.assets.open(name).use { BitmapFactory.decodeStream(it) }

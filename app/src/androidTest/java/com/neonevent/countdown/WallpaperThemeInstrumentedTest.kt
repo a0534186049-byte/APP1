@@ -14,13 +14,27 @@ class WallpaperThemeInstrumentedTest {
 
     @Test fun everyBuiltInThemeHasItsOwnPortraitImage() {
         val prefs = CountdownPrefs(context)
-        assertEquals(9, CountdownPrefs.builtInThemeIndices.size)
-        assertEquals(9, CountdownPrefs.themeNames.size)
+        assertEquals(3, CountdownPrefs.builtInThemeIndices.size)
+        assertEquals(3, CountdownPrefs.themeNames.size)
         assertTrue(CountdownPrefs.THEME_PERSONAL !in CountdownPrefs.builtInThemeIndices)
         CountdownPrefs.builtInThemeIndices.forEach { theme ->
             val bitmap = prefs.backgroundBitmapForTheme(theme)
             assertNotNull("Missing image for theme $theme", bitmap)
             assertTrue("Theme $theme must be portrait-oriented", bitmap!!.height > bitmap.width)
+        }
+    }
+
+    @Test fun removedWallpaperPreferenceFallsBackToOriginalGoldTheme() {
+        val store = context.getSharedPreferences("event_countdown_settings", android.content.Context.MODE_PRIVATE)
+        val hadStoredTheme = store.contains("design_theme")
+        val previousTheme = store.getInt("design_theme", CountdownPrefs.THEME_GOLD)
+        try {
+            store.edit().putInt("design_theme", 9).commit()
+            assertEquals(CountdownPrefs.THEME_GOLD, CountdownPrefs(context).theme)
+        } finally {
+            val editor = store.edit()
+            if (hadStoredTheme) editor.putInt("design_theme", previousTheme) else editor.remove("design_theme")
+            editor.commit()
         }
     }
 

@@ -74,29 +74,6 @@ jobs:
             python scripts/crop_triptych.py --verify-only
           fi
 
-      - name: Generate six portrait wallpapers and independent widget background
-        if: github.event_name == 'pull_request' && github.event.pull_request.number == 6 && github.event.pull_request.head.repo.full_name == github.repository
-        shell: bash
-        env:
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
-        run: |
-          set -euo pipefail
-          python scripts/crop_wallpaper_collage.py --source "קולאז׳ רקעים יוקרתי בזהב ונצנצים.png"
-          git add app/src/main/assets/backgrounds/navy-gold.webp \
-            app/src/main/assets/backgrounds/violet-gold.webp \
-            app/src/main/assets/backgrounds/burgundy-gold.webp \
-            app/src/main/assets/backgrounds/emerald-gold.webp \
-            app/src/main/assets/backgrounds/black-gold.webp \
-            app/src/main/assets/backgrounds/ivory-gold.webp \
-            app/src/main/assets/backgrounds/widget-navy-gold.webp
-          if git diff --cached --quiet; then
-            echo "Wallpaper assets are already up to date."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "Add six selectable premium wallpapers and fixed widget background"
-            git push origin "HEAD:refs/heads/$GITHUB_HEAD_REF"
-          fi
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
