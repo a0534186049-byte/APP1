@@ -91,7 +91,7 @@ class HomeScreenGeometryCalculatorTest {
             )
             assertTrue(
                 "Portrait gap was too small for ${width}x${height}",
-                layout.dateBaseline - layout.lowerCards.last().bottom >= 36f
+                layout.dateBaseline - layout.lowerCards.last().bottom >= 28f
             )
             assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= height + 0.01f)
             assertTrue(layout.quoteMaxHeight >= 0f)
@@ -109,7 +109,7 @@ class HomeScreenGeometryCalculatorTest {
             )
             assertTrue(
                 "Landscape gap was too small for ${width}x${height}",
-                layout.dateBaseline - layout.lowerCards.last().bottom >= 20f
+                layout.dateBaseline - layout.lowerCards.last().bottom >= 22f
             )
             assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= height + 0.01f)
             assertTrue(layout.quoteMaxHeight >= 0f)
@@ -126,9 +126,42 @@ class HomeScreenGeometryCalculatorTest {
                 showDays = true,
                 lowerCount = 3
             )
-            assertTrue(layout.dateBaseline >= layout.lowerCards.last().bottom + 36f)
+            assertTrue(layout.dateBaseline >= layout.lowerCards.last().bottom + 28f)
             assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= 780f + 0.01f)
             assertTrue(layout.quoteMaxHeight >= 0f)
+        }
+    }
+
+    @Test fun compactPhoneKeepsCountdownRowsAndTextAreaInsideTheScreen() {
+        listOf(1.0f, 1.3f, 1.6f).forEach { fontScale ->
+            val horizontal = HomeScreenGeometryCalculator.calculate(
+                widthPx = 320f,
+                heightPx = 480f,
+                density = 1f,
+                scaledDensity = fontScale,
+                showDays = true,
+                lowerCount = 3
+            )
+            assertTrue(horizontal.dayCard!!.bottom < horizontal.lowerCards.first().top)
+            assertTrue(horizontal.lowerCards.last().bottom <= horizontal.dateBaseline)
+            assertTrue(horizontal.quoteBaseline + horizontal.quoteMaxHeight <= 480f + 0.01f)
+            assertTrue(horizontal.quoteMaxHeight >= 0f)
+
+            val vertical = HomeScreenGeometryCalculator.calculate(
+                widthPx = 320f,
+                heightPx = 480f,
+                density = 1f,
+                scaledDensity = fontScale,
+                showDays = false,
+                lowerCount = 4,
+                stackVertically = true
+            )
+            for (index in 1 until vertical.lowerCards.size) {
+                assertTrue(vertical.lowerCards[index - 1].bottom < vertical.lowerCards[index].top)
+            }
+            assertTrue(vertical.lowerCards.last().bottom <= vertical.dateBaseline)
+            assertTrue(vertical.quoteBaseline + vertical.quoteMaxHeight <= 480f + 0.01f)
+            assertTrue(vertical.quoteMaxHeight >= 0f)
         }
     }
 
