@@ -49,14 +49,14 @@ object HomeScreenGeometryCalculator {
             (widthDp - sideDp * 2f - gapDp * (count - 1)).coerceAtLeast(1f) / count
         }
 
-        // Keep the agreed 39sp/17sp unit typography at normal scale. The card itself
-        // is smaller than before; large system fonts are allowed to grow it when needed.
+        // Preserve the approved 44sp/39sp numbers and 17sp labels at normal scale.
+        // Only reduce typography when a small screen or large system font makes it necessary.
         val lowerTextBlockDp = (39f + 17f) * fontScale * 1.05f + 2f
         val lowerPreferredHeightDp = lowerTextBlockDp + 4f
-        val lowerHeightDp = when {
-            count == 0 -> 0f
-            stackVertically -> lowerPreferredHeightDp
-            else -> maxOf(minOf(lowerWidthDp / 1.7f, 100f), lowerPreferredHeightDp)
+        var lowerHeightDp = if (stackVertically || count == 0) {
+            lowerPreferredHeightDp
+        } else {
+            maxOf(minOf(lowerWidthDp / 1.7f, 100f), lowerPreferredHeightDp)
         }
 
         val dayWidthDp = if (showDays) {
@@ -64,7 +64,7 @@ object HomeScreenGeometryCalculator {
         } else 0f
         val dayTextBlockDp = (44f + 17f) * fontScale * 1.05f + 2f
         val dayPreferredHeightDp = dayTextBlockDp + 4f
-        val dayHeightDp = if (showDays) {
+        var dayHeightDp = if (showDays) {
             maxOf(
                 dayWidthDp / if (isLandscape) 2.2f else 1.85f,
                 dayPreferredHeightDp
@@ -83,13 +83,6 @@ object HomeScreenGeometryCalculator {
         )
 
         val verticalGapDp = minOf(if (isLandscape) 5f else 6f, gapDp)
-        val lowerTopDp = if (showDays) {
-            dayTopDp + dayHeightDp + if (isLandscape) 8f else 10f
-        } else {
-            dayTopDp
-        }
-
-        // On a short screen, cap stacked cards by the space left for the date and quote.
         val dateGapDp = when {
             stackVertically -> if (isLandscape) 16f else 20f
             isLandscape -> 22f
@@ -101,21 +94,40 @@ object HomeScreenGeometryCalculator {
         val quoteReserveDp = if (isLandscape) 24f else 40f
         val bottomPaddingDp = 8f
 
-        val verticalCardHeightDp = if (stackVertically && count > 0) {
+        if (stackVertically && count > 0) {
             val gapsTotal = (count - 1) * verticalGapDp
-            val reserved = dateGapDp + dateTextHeightDp + quoteGapDp + quoteReserveDp + bottomPaddingDp
-            val availablePerCard = ((heightDp - lowerTopDp - reserved - gapsTotal) / count)
-                .coerceAtLeast(1f)
-            minOf(lowerPreferredHeightDp, availablePerCard)
-        } else lowerHeightDp
+            val reserved = dateGapDp + dateTextHeightDp + quoteGapDp +
+                quoteReserveDp + bottomPaddingDp
+            val availablePerCard = (
+                (heightDp - dayTopDp - reserved - gapsTotal) / count
+            ).coerceAtLeast(1f)
+            lowerHeightDp = minOf(lowerPreferredHeightDp, availablePerCard)
+        } else if (!stackVertically && count > 0) {
+            // The two-row layout must leave room for the date and quote even in landscape.
+            val dayToLowerGapDp = if (showDays) if (isLandscape) 8f else 10f else 0f
+            val preferredGroupHeight = (if (showDays) dayHeightDp else 0f) +
+                dayToLowerGapDp + lowerHeightDp
+            val reserved = dateGapDp + dateTextHeightDp + quoteGapDp +
+                quoteReserveDp + bottomPaddingDp
+            val availableGroupHeight = (heightDp - dayTopDp - reserved).coerceAtLeast(1f)
+            val fitScale = minOf(1f, availableGroupHeight / preferredGroupHeight.coerceAtLeast(1f))
+            dayHeightDp *= fitScale
+            lowerHeightDp *= fitScale
+        }
+
+        val lowerTopDp = if (showDays) {
+            dayTopDp + dayHeightDp + if (isLandscape) 8f else 10f
+        } else {
+            dayTopDp
+        }
 
         val lowerCards = if (stackVertically) {
             (0 until count).map { index ->
                 HomeCardRect(
                     left = sideDp * safeDensity,
-                    top = (lowerTopDp + index * (verticalCardHeightDp + verticalGapDp)) * safeDensity,
+                    top = (lowerTopDp + index * (lowerHeightDp + verticalGapDp)) * safeDensity,
                     width = (widthDp - sideDp * 2f) * safeDensity,
-                    height = verticalCardHeightDp * safeDensity
+                    height = lowerHeightDp * safeDensity
                 )
             }
         } else {
@@ -141,7 +153,7 @@ object HomeScreenGeometryCalculator {
 
         val lowerBottomDp = when {
             count > 0 && stackVertically ->
-                lowerTopDp + count * verticalCardHeightDp + (count - 1) * verticalGapDp
+                lowerTopDp + count * lowerHeightDp + (count - 1) * verticalGapDp
             count > 0 -> lowerTopDp + lowerHeightDp
             showDays -> dayTopDp + dayHeightDp
             else -> dayTopDp
