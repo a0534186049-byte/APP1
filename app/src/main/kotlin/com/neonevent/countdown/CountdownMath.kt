@@ -26,28 +26,16 @@ object CountdownMath {
     }
 
     /**
-     * Counts the full duration until the selected event date begins in the device's
-     * local timezone. Each field is the total remaining amount in that unit.
-     * Seconds are rounded up so a positive remaining duration never shows zero.
+     * Compatibility entry point for installations or callers that still use the old
+     * method name. A date-only event has no fixed time, so all displays must use the
+     * same local-calendar-day count and the time remaining until the next local midnight.
      */
+    @Deprecated("Use calculateDateOnly; a date-only countdown does not show total elapsed hours.")
     fun calculateCumulative(
         eventLocalDate: LocalDate,
         nowMillis: Long,
         zone: ZoneId = ZoneId.systemDefault()
-    ): CountdownParts {
-        val target = eventLocalDate.atStartOfDay(zone).toInstant()
-        val remainingMillis = Duration.between(Instant.ofEpochMilli(nowMillis), target).toMillis()
-        if (remainingMillis <= 0L) return CountdownParts(true, 0, 0, 0, 0)
-
-        val totalSeconds = ((remainingMillis + 999L) / 1000L).coerceAtLeast(1L)
-        return CountdownParts(
-            complete = false,
-            days = totalSeconds / 86_400L,
-            hours = totalSeconds / 3_600L,
-            minutes = totalSeconds / 60L,
-            seconds = totalSeconds
-        )
-    }
+    ): CountdownParts = calculateDateOnly(eventLocalDate, nowMillis, zone)
 
     /**
      * Counts calendar days to the selected local event date and, until that date,
