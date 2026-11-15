@@ -299,8 +299,8 @@ object NeonCountdownRenderer {
         paint.textAlign = Paint.Align.CENTER
         var chosenNumberSize = numberSize
         var chosenLabelSize = labelSize
-        val minimumNumberSize = numberSize * 0.72f
-        val minimumLabelSize = labelSize * 0.75f
+        val minimumNumberSize = numberSize * 0.55f
+        val minimumLabelSize = labelSize * 0.60f
 
         fun combinedTextHeight(): Float {
             paint.typeface = numberTypeface
