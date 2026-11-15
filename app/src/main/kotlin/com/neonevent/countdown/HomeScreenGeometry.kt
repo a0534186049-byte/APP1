@@ -51,8 +51,8 @@ object HomeScreenGeometryCalculator {
 
         // Preserve the approved 44sp/39sp numbers and 17sp labels at normal scale.
         // Only reduce typography when a small screen or large system font makes it necessary.
-        val lowerTextBlockDp = (39f + 17f) * fontScale * 1.05f + 2f
-        val lowerPreferredHeightDp = lowerTextBlockDp + 4f
+        val lowerTextBlockDp = (39f + 17f) * fontScale * 1.14f + 4f
+        val lowerPreferredHeightDp = lowerTextBlockDp + 2f
         var lowerHeightDp = if (stackVertically || count == 0) {
             lowerPreferredHeightDp
         } else {
@@ -62,8 +62,8 @@ object HomeScreenGeometryCalculator {
         val dayWidthDp = if (showDays) {
             minOf(widthDp * 0.42f, 196f, widthDp - sideDp * 2f)
         } else 0f
-        val dayTextBlockDp = (44f + 17f) * fontScale * 1.05f + 2f
-        val dayPreferredHeightDp = dayTextBlockDp + 4f
+        val dayTextBlockDp = (44f + 17f) * fontScale * 1.14f + 4f
+        val dayPreferredHeightDp = dayTextBlockDp + 2f
         var dayHeightDp = if (showDays) {
             maxOf(
                 dayWidthDp / if (isLandscape) 2.2f else 1.85f,
