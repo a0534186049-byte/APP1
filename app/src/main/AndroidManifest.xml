@@ -73,10 +73,6 @@
                 <action android:name="android.intent.action.TIME_SET" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="com.neonevent.countdown.WIDGET_TICK" />
-                <action android:name="com.neonevent.countdown.WIDGET_BOUNDARY_TEN_HOURS" />
-                <action android:name="com.neonevent.countdown.WIDGET_BOUNDARY_ONE_HOUR" />
-                <action android:name="com.neonevent.countdown.WIDGET_BOUNDARY_MIDNIGHT" />
-                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_no_title" />
         </receiver>
