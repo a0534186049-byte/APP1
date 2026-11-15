@@ -103,14 +103,16 @@ object NeonCountdownRenderer {
             CountdownMath.calculateDateOnly(eventDate, nowMillis)
         }
         val selected = (0..3).filter { prefs.isUnitVisible(it) }
-        val lower = selected.filter { it in 1..3 } // Physical order: hours left, minutes center, seconds right.
+        val cumulativeMode = prefs.isCumulativeCountdown
+        val visibleUnits = if (cumulativeMode) selected else selected.filter { it in 1..3 }
         val geometry = HomeScreenGeometryCalculator.calculate(
             widthPx = w,
             heightPx = h,
             density = density,
             scaledDensity = prefs.sp(1f),
-            showDays = selected.contains(0),
-            lowerCount = lower.size
+            showDays = !cumulativeMode && selected.contains(0),
+            lowerCount = visibleUnits.size,
+            stackVertically = cumulativeMode
         )
 
         if (prefs.showTitle) {
@@ -214,8 +216,8 @@ object NeonCountdownRenderer {
             )
         }
 
-        geometry.dayCard?.let { drawBox(0, it) }
-        lower.forEachIndexed { index, unit ->
+        if (!cumulativeMode) geometry.dayCard?.let { drawBox(0, it) }
+        visibleUnits.forEachIndexed { index, unit ->
             geometry.lowerCards.getOrNull(index)?.let { drawBox(unit, it) }
         }
 

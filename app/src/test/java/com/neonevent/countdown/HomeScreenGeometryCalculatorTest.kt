@@ -131,4 +131,29 @@ class HomeScreenGeometryCalculatorTest {
             assertTrue(layout.quoteMaxHeight >= 0f)
         }
     }
+
+    @Test fun cumulativeModeStacksFourFullWidthCardsOnSeparateRows() {
+        val layout = HomeScreenGeometryCalculator.calculate(
+            widthPx = 411f,
+            heightPx = 900f,
+            density = 1f,
+            scaledDensity = 1f,
+            showDays = false,
+            lowerCount = 4,
+            stackVertically = true
+        )
+        assertEquals(null, layout.dayCard)
+        assertEquals(4, layout.lowerCards.size)
+        val cards = layout.lowerCards
+        cards.forEach { card ->
+            assertEquals(cards.first().left, card.left, 0.01f)
+            assertEquals(cards.first().width, card.width, 0.01f)
+            assertTrue(card.height > 0f)
+        }
+        for (index in 1 until cards.size) {
+            assertTrue(cards[index - 1].bottom < cards[index].top)
+        }
+        assertTrue(cards.last().bottom < layout.dateBaseline)
+    }
+
 }

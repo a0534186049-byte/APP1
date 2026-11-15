@@ -32,7 +32,8 @@ object HomeScreenGeometryCalculator {
         density: Float,
         scaledDensity: Float,
         showDays: Boolean,
-        lowerCount: Int
+        lowerCount: Int,
+        stackVertically: Boolean = false
     ): HomeScreenGeometry {
         val safeDensity = density.coerceAtLeast(0.1f)
         val widthDp = (widthPx / safeDensity).coerceAtLeast(1f)
@@ -42,7 +43,7 @@ object HomeScreenGeometryCalculator {
         val isLandscape = heightDp < widthDp * 0.85f
         val sideDp = minOf(if (isLandscape) 16f else 20f, widthDp * 0.06f)
         val gapDp = minOf(if (isLandscape) 8f else 10f, widthDp * 0.03f)
-        val count = lowerCount.coerceIn(0, 3)
+        val count = lowerCount.coerceIn(0, if (stackVertically) 4 else 3)
         val lowerWidthDp = if (count == 0) 0f else
             (widthDp - sideDp * 2f - gapDp * (count - 1)).coerceAtLeast(1f) / count
 
@@ -78,17 +79,36 @@ object HomeScreenGeometryCalculator {
         } else null
 
         val lowerTopDp = if (showDays) dayTopDp + dayHeightDp + (if (isLandscape) 8f else 18f) else dayTopDp
-        val lowerCards = (0 until count).map { index ->
-            val leftDp = sideDp + index * (lowerWidthDp + gapDp)
-            HomeCardRect(
-                left = leftDp * safeDensity,
-                top = lowerTopDp * safeDensity,
-                width = lowerWidthDp * safeDensity,
-                height = lowerHeightDp * safeDensity
-            )
+        val verticalGapDp = minOf(6f, gapDp)
+        val verticalCardHeightDp = maxOf(
+            lowerTextBlockDp + 10f,
+            minOf(78f, heightDp * 0.14f)
+        )
+        val lowerCards = if (stackVertically) {
+            (0 until count).map { index ->
+                HomeCardRect(
+                    left = sideDp * safeDensity,
+                    top = (lowerTopDp + index * (verticalCardHeightDp + verticalGapDp)) * safeDensity,
+                    width = (widthDp - sideDp * 2f) * safeDensity,
+                    height = verticalCardHeightDp * safeDensity
+                )
+            }
+        } else {
+            (0 until count).map { index ->
+                val leftDp = sideDp + index * (lowerWidthDp + gapDp)
+                HomeCardRect(
+                    left = leftDp * safeDensity,
+                    top = lowerTopDp * safeDensity,
+                    width = lowerWidthDp * safeDensity,
+                    height = lowerHeightDp * safeDensity
+                )
+            }
         }
 
-        val lowerBottomDp = if (count > 0) lowerTopDp + lowerHeightDp else
+        val lowerBottomDp = if (count > 0) {
+            if (stackVertically) lowerTopDp + count * verticalCardHeightDp + (count - 1) * verticalGapDp
+            else lowerTopDp + lowerHeightDp
+        } else
             if (showDays) dayTopDp + dayHeightDp else dayTopDp
         val dateGapDp = if (isLandscape) 20f else 36f
         val dateBaselineDp = maxOf(lowerBottomDp + dateGapDp, heightDp * 0.60f)
