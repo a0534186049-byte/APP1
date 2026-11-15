@@ -9,6 +9,25 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 class CountdownMathTest {
+    @Test fun thirtyCalendarDaysAndFiveHoursAreReportedConsistently() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val now = LocalDate.of(2026, 11, 15)
+            .atTime(19, 0)
+            .atZone(zone)
+            .toInstant()
+            .toEpochMilli()
+        val targetDate = LocalDate.of(2026, 12, 15)
+
+        val daily = CountdownMath.calculateDateOnly(targetDate, now, zone)
+        val legacyLayout = CountdownMath.calculateCumulative(targetDate, now, zone)
+
+        assertEquals(30L, daily.days)
+        assertEquals(5L, daily.hours)
+        assertEquals(0L, daily.minutes)
+        assertEquals(0L, daily.seconds)
+        assertEquals(daily, legacyLayout)
+    }
+
     @Test fun futureEventUsesDateDifferenceOnly() {
         val result = CountdownMath.calculateDateOnly(
             LocalDate.of(2026, 11, 4),
