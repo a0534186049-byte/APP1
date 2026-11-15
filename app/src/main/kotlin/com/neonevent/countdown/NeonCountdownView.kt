@@ -101,7 +101,8 @@ object NeonCountdownRenderer {
         // The settings choice below changes only the visual arrangement of the four units.
         val countdown = CountdownMath.calculateDateOnly(eventDate, nowMillis)
         val selected = (0..3).filter { prefs.isUnitVisible(it) }
-        val verticalLayout = prefs.isVerticalCountdownLayout
+        // In landscape, use the two-row arrangement so all four units remain visible.
+        val verticalLayout = prefs.isVerticalCountdownLayout && h >= w * 0.85f
         val visibleUnits = if (verticalLayout) selected else selected.filter { it in 1..3 }
         val geometry = HomeScreenGeometryCalculator.calculate(
             widthPx = w,
@@ -207,7 +208,7 @@ object NeonCountdownRenderer {
                 numberSize = prefs.sp(if (isDays) 44f else 39f),
                 labelSize = prefs.sp(17f),
                 maxWidth = bounds.width * 0.90f,
-                maxHeight = bounds.height * 0.90f,
+                maxHeight = bounds.height * 0.98f,
                 numberColor = numberColor,
                 labelColor = labelColor,
                 shadow = !isPersonal && (theme == CountdownPrefs.THEME_GOLD || theme == CountdownPrefs.THEME_PREMIUM)
