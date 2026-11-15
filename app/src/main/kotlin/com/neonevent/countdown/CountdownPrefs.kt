@@ -109,10 +109,20 @@ class CountdownPrefs(context: Context) {
         get() = prefs.getInt("units_mask", 15).coerceIn(0, 15)
         set(value) { prefs.edit().putInt("units_mask", value.coerceIn(0, 15)).apply() }
 
-    /** False keeps the original daily countdown; true shows total remaining units. */
-    var isCumulativeCountdown: Boolean
+    /**
+     * Selects the stacked visual layout. The legacy preference key is retained so
+     * an existing installation keeps its chosen layout without losing settings.
+     * Both layouts now use the same date-based countdown calculation.
+     */
+    var isVerticalCountdownLayout: Boolean
         get() = prefs.getBoolean("cumulative_countdown_mode", false)
         set(value) { prefs.edit().putBoolean("cumulative_countdown_mode", value).apply() }
+
+    /** Compatibility alias for older code; this is a layout choice, not a counting mode. */
+    @Deprecated("Use isVerticalCountdownLayout; both layouts share the same daily calculation.")
+    var isCumulativeCountdown: Boolean
+        get() = isVerticalCountdownLayout
+        set(value) { isVerticalCountdownLayout = value }
 
     fun isUnitVisible(index: Int): Boolean = (unitsMask and (1 shl index)) != 0
 
