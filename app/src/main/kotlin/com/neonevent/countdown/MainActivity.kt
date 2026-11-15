@@ -1,6 +1,7 @@
 package com.neonevent.countdown
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import android.app.AlertDialog
 import android.app.WallpaperManager
 import android.content.ActivityNotFoundException
@@ -9,36 +10,33 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.icu.util.Calendar
-import android.icu.util.HebrewCalendar
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.FrameLayout
-import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.NumberPicker
 import android.widget.ScrollView
-import android.widget.Spinner
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
-import java.util.Locale
 
-class MainActivity : Activity() {
+class MainActivity : ComponentActivity() {
+    private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
     private lateinit var prefs: CountdownPrefs
     private var settingsShown = false
+    private val settingsBackCallback = object : OnBackPressedCallback(false) {
+        override fun handleOnBackPressed() {
+            buildHomeScreen()
+        }
+    }
     private val imageRequestCode = 4902
     private val ink = Color.rgb(12, 17, 31)
     private val gold = Color.rgb(224, 185, 108)
@@ -46,6 +44,7 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = CountdownPrefs(this)
+        onBackPressedDispatcher.addCallback(this, settingsBackCallback)
         window.statusBarColor = ink
         window.navigationBarColor = ink
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -61,6 +60,7 @@ class MainActivity : Activity() {
 
     private fun buildHomeScreen() {
         settingsShown = false
+        settingsBackCallback.isEnabled = false
         val frame = FrameLayout(this).apply { setBackgroundColor(ink); layoutDirection = View.LAYOUT_DIRECTION_RTL }
         frame.addView(NeonCountdownView(this), FrameLayout.LayoutParams(-1, -1))
 
@@ -84,9 +84,14 @@ class MainActivity : Activity() {
 
     private fun buildSettingsScreen() {
         settingsShown = true
+        settingsBackCallback.isEnabled = true
         val frame = FrameLayout(this).apply { layoutDirection = View.LAYOUT_DIRECTION_RTL; setBackgroundColor(ink) }
         val background = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.FIT_CENTER
+            scaleType = if (prefs.theme == CountdownPrefs.THEME_PERSONAL) {
+                ImageView.ScaleType.FIT_CENTER
+            } else {
+                ImageView.ScaleType.CENTER_CROP
+            }
             setImageBitmap(prefs.backgroundBitmap())
             alpha = 0.56f
         }
@@ -125,55 +130,124 @@ class MainActivity : Activity() {
         card.addView(makeText("בחרו רקע מלא ומוכן. הצבעים והקוביות מותאמים לכל ערכה.", 14f, 0xFFCBD4E5.toInt(), false),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(12) })
 
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
+        val themeIndices = CountdownPrefs.builtInThemeIndices
         val labels = CountdownPrefs.themeNames
-        for (i in labels.indices) {
-            val tile = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setPadding(dp(5), dp(5), dp(5), dp(8))
-                background = roundBackground(if (prefs.theme == i) 0xCC24314B.toInt() else 0x66232C40, if (prefs.theme == i) gold else 0x668D9AB0, 14)
-                setOnClickListener {
-                    prefs.theme = i
-                    afterSettingsChanged()
-                    buildSettingsScreen()
+        themeIndices.chunked(3).forEachIndexed { rowIndex, group ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutDirection = View.LAYOUT_DIRECTION_RTL
+            }
+            group.forEachIndexed { position, themeIndex ->
+                val label = labels[themeIndices.indexOf(themeIndex)]
+                val selected = prefs.theme == themeIndex
+                val tile = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    setPadding(dp(5), dp(5), dp(5), dp(8))
+                    background = roundBackground(
+                        if (selected) 0xCC24314B.toInt() else 0x66232C40,
+                        if (selected) gold else 0x668D9AB0,
+                        14
+                    )
+                    setOnClickListener {
+                        prefs.theme = themeIndex
+                        afterSettingsChanged()
+                        buildSettingsScreen()
+                    }
                 }
+                val preview = ImageView(this).apply {
+                    setImageBitmap(prefs.backgroundBitmapForTheme(themeIndex))
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    contentDescription = label
+                }
+                tile.addView(preview, LinearLayout.LayoutParams(-1, dp(116)))
+                tile.addView(makeText(label, 12.5f, Color.WHITE, selected).apply { gravity = Gravity.CENTER },
+                    LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
+                row.addView(tile, LinearLayout.LayoutParams(0, -2, 1f).apply {
+                    if (position > 0) marginStart = dp(5)
+                    if (position < group.lastIndex) marginEnd = dp(5)
+                })
             }
-            val preview = ImageView(this).apply {
-                setImageBitmap(prefs.backgroundBitmapForTheme(i))
-                scaleType = ImageView.ScaleType.FIT_CENTER
-                contentDescription = labels[i]
-            }
-            tile.addView(preview, LinearLayout.LayoutParams(-1, dp(116)))
-            tile.addView(makeText(labels[i], 12.5f, Color.WHITE, prefs.theme == i).apply { gravity = Gravity.CENTER },
-                LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
-            row.addView(tile, LinearLayout.LayoutParams(0, -2, 1f).apply {
-                if (i != 0) marginStart = dp(5)
-                if (i != 2) marginEnd = dp(5)
+            repeat(3 - group.size) { row.addView(View(this), LinearLayout.LayoutParams(0, dp(1), 1f)) }
+            card.addView(row, LinearLayout.LayoutParams(-1, -2).apply {
+                if (rowIndex > 0) topMargin = dp(8)
             })
         }
-        card.addView(row, LinearLayout.LayoutParams(-1, -2))
 
         card.addView(makeButton("▧  בחירת תמונה אישית מהמכשיר") { choosePersonalImage() },
             LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(12) })
         if (prefs.theme == CountdownPrefs.THEME_PERSONAL) {
             card.addView(makeText("התמונה האישית פעילה. אפשר לבחור לה מראה לקוביות:", 14f, Color.WHITE, true),
                 LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
-            val styles = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            for (style in CountdownPrefs.CUBES_DARK..CountdownPrefs.CUBES_FROSTED) {
-                val choice = CheckBox(this).apply {
-                    text = CountdownPrefs.cubeNames[style]
-                    textSize = 15f
-                    setTextColor(Color.WHITE)
-                    buttonTintList = android.content.res.ColorStateList.valueOf(if (prefs.cubeStyle == style) gold else 0xFFCAD4E2.toInt())
-                    isChecked = prefs.cubeStyle == style
+            val styles = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutDirection = View.LAYOUT_DIRECTION_RTL
+            }
+            for (style in CountdownPrefs.CUBES_DARK..CountdownPrefs.CUBES_AUTO) {
+                val colors = when (style) {
+                    CountdownPrefs.CUBES_LIGHT -> Quadruple(
+                        0xE8FFFFFF.toInt(), 0xD0FFFFFF.toInt(),
+                        0xFF182033.toInt(), 0xFF31394B.toInt()
+                    )
+                    CountdownPrefs.CUBES_FROSTED -> Quadruple(
+                        0xBFF7F8FC.toInt(), 0xDDFEFFFF.toInt(),
+                        0xFF182033.toInt(), 0xFF303849.toInt()
+                    )
+                    CountdownPrefs.CUBES_AUTO -> if (prefs.personalAutoContrastIsDark()) Quadruple(
+                        0xE8FFFFFF.toInt(), 0xD0FFFFFF.toInt(),
+                        0xFF182033.toInt(), 0xFF31394B.toInt()
+                    ) else Quadruple(
+                        0xD9151D2B.toInt(), 0xB8FFFFFF.toInt(),
+                        Color.WHITE, 0xFFE8EDF7.toInt()
+                    )
+                    else -> Quadruple(
+                        0xD9151D2B.toInt(), 0xB8FFFFFF.toInt(),
+                        Color.WHITE, 0xFFE8EDF7.toInt()
+                    )
+                }
+                val fill = colors.first
+                val stroke = colors.second
+                val numberColor = colors.third
+                val labelColor = colors.fourth
+                val selected = prefs.cubeStyle == style
+                val option = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    setPadding(dp(3), dp(4), dp(3), dp(4))
+                    background = roundBackground(
+                        0x66232C40, if (selected) gold else 0x668D9AB0, 12
+                    )
                     setOnClickListener {
                         prefs.cubeStyle = style
                         afterSettingsChanged()
                         buildSettingsScreen()
                     }
                 }
-                styles.addView(choice, LinearLayout.LayoutParams(-1, dp(44)))
+                val preview = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    background = roundBackground(fill, stroke, 10)
+                    setPadding(dp(2), dp(2), dp(2), dp(2))
+                }
+                preview.addView(
+                    makeText("123", 15f, numberColor, true).apply { gravity = Gravity.CENTER },
+                    LinearLayout.LayoutParams(-1, dp(28))
+                )
+                preview.addView(
+                    makeText("ימים", 10f, labelColor, true).apply { gravity = Gravity.CENTER },
+                    LinearLayout.LayoutParams(-1, dp(20))
+                )
+                option.addView(preview, LinearLayout.LayoutParams(-1, dp(50)))
+                option.addView(
+                    makeText(CountdownPrefs.cubeNames[style], 11.5f, Color.WHITE, selected).apply {
+                        gravity = Gravity.CENTER
+                    },
+                    LinearLayout.LayoutParams(-1, dp(25))
+                )
+                styles.addView(option, LinearLayout.LayoutParams(0, dp(86), 1f).apply {
+                    if (style != CountdownPrefs.CUBES_DARK) marginStart = dp(4)
+                    if (style != CountdownPrefs.CUBES_FROSTED) marginEnd = dp(4)
+                })
             }
             card.addView(styles)
             card.addView(makeButton("חזרה לרקע מובנה") { prefs.theme = CountdownPrefs.THEME_GOLD; afterSettingsChanged(); buildSettingsScreen() },
@@ -225,8 +299,42 @@ class MainActivity : Activity() {
     private fun addDisplaySection(content: LinearLayout) {
         val card = settingsCard()
         card.addView(makeText("תצוגת הספירה", 20f, Color.WHITE, true))
-        card.addView(makeText("בחרו אילו יחידות זמן יוצגו בקוביות.", 14f, 0xFFCBD4E5.toInt(), false),
+        card.addView(makeText("בחרו את סידור הקוביות. שיטת הספירה נשארת זהה בשתי התצוגות.", 14f, 0xFFCBD4E5.toInt(), false),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(8) })
+        val modeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        val dailyMode = makeButton("בשורה – כמו היום") {
+            prefs.isVerticalCountdownLayout = false
+            afterSettingsChanged()
+            buildSettingsScreen()
+        }.apply {
+            background = roundBackground(
+                if (!prefs.isVerticalCountdownLayout) 0xCC24314B.toInt() else 0xFF18263D.toInt(),
+                if (!prefs.isVerticalCountdownLayout) gold else 0x887F9ABC.toInt(), 13
+            )
+        }
+        val verticalMode = makeButton("בטור – תצוגה אנכית") {
+            prefs.isVerticalCountdownLayout = true
+            afterSettingsChanged()
+            buildSettingsScreen()
+        }.apply {
+            background = roundBackground(
+                if (prefs.isVerticalCountdownLayout) 0xCC24314B.toInt() else 0xFF18263D.toInt(),
+                if (prefs.isVerticalCountdownLayout) gold else 0x887F9ABC.toInt(), 13
+            )
+        }
+        modeRow.addView(dailyMode, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(5) })
+        modeRow.addView(verticalMode, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(5) })
+        card.addView(modeRow, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        card.addView(makeText(
+            if (prefs.isVerticalCountdownLayout)
+                "הקוביות מסודרות בטור: ימים, שעות, דקות ושניות. הערכים מחושבים באותה שיטה יומית כמו בתצוגה האופקית."
+            else
+                "הקוביות מסודרות בשורה: ימים למעלה ושעות, דקות ושניות מתחת. הערכים מחושבים לפי התאריך ועד חצות הבא.",
+            13f, 0xFFCBD4E5.toInt(), false
+        ), LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         val names = listOf("ימים", "שעות", "דקות", "שניות")
         names.forEachIndexed { index, label ->
             val check = CheckBox(this).apply {
@@ -261,6 +369,13 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(-1, dp(50)))
         card.addView(makeButton("▣  הגדרות טפט חי") { openWallpaperPicker() },
             LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
+        card.addView(makeText("עדכון הווידג׳ט", 17f, Color.WHITE, true),
+            LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
+        card.addView(makeText(
+            "הווידג׳ט מציג ארבע קוביות נפרדות ומתעדכן בקירוב פעם בדקה, בהתאם למדיניות Android. אין צורך בהרשאת התראות ותזכורות מיוחדת.",
+            13.5f, 0xFFCBD4E5.toInt(), false
+        ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+
         card.addView(makeText("ווידג׳טים למסך הבית", 17f, Color.WHITE, true),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
         card.addView(makeText("לחצו לחיצה ארוכה על מסך הבית, בחרו „ווידג׳טים” והוסיפו „ספירה עם כותרת” או „ספירה ללא כותרת”. העדכון מתבצע בקירוב פעם בדקה בהתאם למדיניות Android.", 14f, 0xFFCBD4E5.toInt(), false),
@@ -272,92 +387,110 @@ class MainActivity : Activity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
-            setPadding(dp(18), dp(8), dp(18), dp(4))
+            setPadding(dp(16), dp(10), dp(16), dp(8))
         }
-        root.addView(makeText("בחרו שנה, חודש ויום עבריים", 15f, ink, true))
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
-        val year = NumberPicker(this)
-        val month = Spinner(this)
-        row.addView(month, LinearLayout.LayoutParams(0, dp(54), 1f))
-        row.addView(year, LinearLayout.LayoutParams(dp(110), dp(54)))
-        root.addView(row, LinearLayout.LayoutParams(-1, -2))
-        val selectedText = makeText("", 15f, ink, true).apply { gravity = Gravity.CENTER }
-        root.addView(selectedText, LinearLayout.LayoutParams(-1, dp(34)))
-        val grid = GridLayout(this).apply { columnCount = 7; layoutDirection = View.LAYOUT_DIRECTION_RTL }
-        root.addView(grid, LinearLayout.LayoutParams(-1, -2))
+        root.addView(makeText("בחרו יום, חודש ושנה עבריים", 16f, ink, true),
+            LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+
+        val wheels = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        val dayPicker = NumberPicker(this).apply {
+            contentDescription = "יום עברי"
+            wrapSelectorWheel = true
+        }
+        val monthPicker = NumberPicker(this).apply {
+            contentDescription = "חודש עברי"
+            wrapSelectorWheel = true
+        }
+        val yearPicker = NumberPicker(this).apply {
+            contentDescription = "שנה עברית"
+            wrapSelectorWheel = false
+        }
+        wheels.addView(dayPicker, LinearLayout.LayoutParams(0, dp(176), 0.85f))
+        wheels.addView(monthPicker, LinearLayout.LayoutParams(0, dp(176), 1.2f))
+        wheels.addView(yearPicker, LinearLayout.LayoutParams(0, dp(176), 1.05f))
+        root.addView(wheels, LinearLayout.LayoutParams(-1, -2))
+
+        val preview = makeText("", 16f, ink, true).apply { gravity = Gravity.CENTER }
+        root.addView(preview, LinearLayout.LayoutParams(-1, dp(38)).apply { topMargin = dp(4) })
 
         var currentYear = prefs.targetHebrewYear
         var currentMonth = prefs.targetHebrewMonth
         var currentDay = prefs.targetHebrewDay
-        var monthOptions = prefs.monthOptions(currentYear)
-        var suppressMonth = false
-        year.minValue = (HebrewCalendar(Locale("he", "IL")).get(Calendar.YEAR) - 1).coerceAtLeast(5700)
-        year.maxValue = HebrewCalendar(Locale("he", "IL")).get(Calendar.YEAR) + 50
-        year.value = currentYear.coerceIn(year.minValue, year.maxValue)
-        year.displayedValues = (year.minValue..year.maxValue).map { hebrewYearLabel(it) }.toTypedArray()
+        var monthOptions = emptyList<Pair<Int, String>>()
+        var suppressWheelEvents = true
 
-        fun fillMonthOptions(preferred: Int) {
+        val currentHebrewYear = prefs.currentHebrewYear()
+        yearPicker.minValue = (currentHebrewYear - 1).coerceAtLeast(5700)
+        yearPicker.maxValue = currentHebrewYear + 50
+        yearPicker.displayedValues = (yearPicker.minValue..yearPicker.maxValue)
+            .map { prefs.hebrewYearLabel(it) }.toTypedArray()
+        yearPicker.value = currentYear.coerceIn(yearPicker.minValue, yearPicker.maxValue)
+        currentYear = yearPicker.value
+
+        fun updatePreview() {
+            currentDay = dayPicker.value
+            preview.text = prefs.formatHebrewDate(currentYear, currentMonth, currentDay)
+        }
+
+        fun updateDayOptions(preferredDay: Int) {
+            dayPicker.displayedValues = null
+            dayPicker.minValue = 1
+            dayPicker.maxValue = prefs.daysInHebrewMonth(currentYear, currentMonth)
+            dayPicker.displayedValues = prefs.hebrewDayOptions(currentYear, currentMonth)
+                .map { prefs.hebrewNumber(it) }.toTypedArray()
+            dayPicker.value = preferredDay.coerceIn(dayPicker.minValue, dayPicker.maxValue)
+            currentDay = dayPicker.value
+        }
+
+        fun updateMonthOptions(preferredMonth: Int) {
             monthOptions = prefs.monthOptions(currentYear)
-            val idx = monthOptions.indexOfFirst { it.first == preferred }.takeIf { it >= 0 } ?: 0
-            currentMonth = monthOptions[idx].first
-            suppressMonth = true
-            month.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, monthOptions.map { it.second })
-            month.setSelection(idx, false)
-            suppressMonth = false
+            val selectedMonth = when {
+                monthOptions.any { it.first == preferredMonth } -> preferredMonth
+                preferredMonth == CountdownPrefs.ADAR_1 ->
+                    CountdownPrefs.ADAR.takeIf { candidate -> monthOptions.any { it.first == candidate } }
+                        ?: monthOptions.first().first
+                else -> monthOptions.first().first
+            }
+            monthPicker.displayedValues = null
+            monthPicker.minValue = 0
+            monthPicker.maxValue = monthOptions.lastIndex
+            monthPicker.displayedValues = monthOptions.map { it.second }.toTypedArray()
+            monthPicker.value = monthOptions.indexOfFirst { it.first == selectedMonth }.coerceAtLeast(0)
+            currentMonth = monthOptions[monthPicker.value].first
         }
 
-        fun drawDays() {
-            grid.removeAllViews()
-            val weekdays = listOf("א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳")
-            for (column in 0..6) {
-                val label = makeText(weekdays[column], 12f, 0xFF475167.toInt(), true).apply { gravity = Gravity.CENTER }
-                grid.addView(label, GridLayout.LayoutParams(GridLayout.spec(0), GridLayout.spec(column, 1f)).apply {
-                    width = 0; height = dp(32)
-                })
-            }
-            val firstDay = prefs.firstWeekdayOfHebrewMonth(currentYear, currentMonth)
-            val maxDay = prefs.daysInHebrewMonth(currentYear, currentMonth)
-            currentDay = currentDay.coerceIn(1, maxDay)
-            selectedText.text = hebrewYearLabel(currentDay) + " ב" + (monthOptions.firstOrNull { it.first == currentMonth }?.second ?: "")
-            for (index in 0 until firstDay + maxDay) {
-                val rowIndex = index / 7 + 1
-                val colIndex = index % 7
-                val day = index - firstDay + 1
-                val view = if (day < 1) View(this) else makeText(hebrewYearLabel(day), 14f,
-                    if (day == currentDay) Color.WHITE else ink, day == currentDay).apply {
-                    gravity = Gravity.CENTER
-                    background = if (day == currentDay) roundBackground(0xFF273D5B.toInt(), gold, 20) else
-                        roundBackground(Color.WHITE, 0xFFE2E6EF.toInt(), 20)
-                    setOnClickListener {
-                        currentDay = day
-                        drawDays()
-                    }
-                }
-                grid.addView(view, GridLayout.LayoutParams(GridLayout.spec(rowIndex), GridLayout.spec(colIndex, 1f)).apply {
-                    width = 0; height = dp(39); setMargins(dp(2), dp(2), dp(2), dp(2))
-                })
-            }
-        }
+        suppressWheelEvents = true
+        updateMonthOptions(currentMonth)
+        updateDayOptions(currentDay)
+        updatePreview()
+        suppressWheelEvents = false
 
-        fillMonthOptions(currentMonth)
-        drawDays()
-        month.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (suppressMonth || position !in monthOptions.indices) return
-                currentMonth = monthOptions[position].first
-                currentDay = currentDay.coerceAtMost(prefs.daysInHebrewMonth(currentYear, currentMonth))
-                drawDays()
-            }
-        }
-        year.setOnValueChangedListener { _, _, newValue ->
-            val oldMonthName = monthOptions.firstOrNull { it.first == currentMonth }?.second
+        yearPicker.setOnValueChangedListener { _, _, newValue ->
+            if (suppressWheelEvents) return@setOnValueChangedListener
+            val oldMonth = currentMonth
+            suppressWheelEvents = true
             currentYear = newValue
-            val newOptions = prefs.monthOptions(currentYear)
-            val preferred = newOptions.firstOrNull { it.second == oldMonthName }?.first ?: currentMonth
-            fillMonthOptions(preferred)
-            currentDay = currentDay.coerceAtMost(prefs.daysInHebrewMonth(currentYear, currentMonth))
-            drawDays()
+            updateMonthOptions(oldMonth)
+            updateDayOptions(currentDay)
+            updatePreview()
+            suppressWheelEvents = false
+        }
+        monthPicker.setOnValueChangedListener { _, _, newValue ->
+            if (suppressWheelEvents || newValue !in monthOptions.indices) return@setOnValueChangedListener
+            suppressWheelEvents = true
+            currentMonth = monthOptions[newValue].first
+            updateDayOptions(currentDay)
+            updatePreview()
+            suppressWheelEvents = false
+        }
+        dayPicker.setOnValueChangedListener { _, _, newValue ->
+            if (suppressWheelEvents) return@setOnValueChangedListener
+            currentDay = newValue
+            updatePreview()
         }
 
         val dialog = AlertDialog.Builder(this)
@@ -369,9 +502,9 @@ class MainActivity : Activity() {
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 prefs.setHebrewDate(currentYear, currentMonth, currentDay)
-                afterSettingsChanged()
+                CountdownWidgetBase.updateAllWidgets(this)
                 dialog.dismiss()
-                if (settingsShown) buildSettingsScreen()
+                if (settingsShown) buildSettingsScreen() else buildHomeScreen()
             }
         }
         dialog.show()
@@ -461,32 +594,7 @@ class MainActivity : Activity() {
         setStroke(dp(1), stroke)
     }
 
-    private fun hebrewYearLabel(year: Int): String {
-        // Display the Hebrew-calendar year in Hebrew numerals, e.g. תשפ״ז.
-        var rest = year % 1000
-        val out = StringBuilder()
-        while (rest >= 400) { out.append('ת'); rest -= 400 }
-        when {
-            rest >= 300 -> { out.append('ש'); rest -= 300 }
-            rest >= 200 -> { out.append('ר'); rest -= 200 }
-            rest >= 100 -> { out.append('ק'); rest -= 100 }
-        }
-        if (rest == 15) { out.append("טו"); rest = 0 }
-        else if (rest == 16) { out.append("טז"); rest = 0 }
-        else {
-            val tens = when { rest >= 90 -> 90; rest >= 80 -> 80; rest >= 70 -> 70; rest >= 60 -> 60; rest >= 50 -> 50; rest >= 40 -> 40; rest >= 30 -> 30; rest >= 20 -> 20; rest >= 10 -> 10; else -> 0 }
-            if (tens > 0) { out.append(when (tens) { 90 -> 'צ'; 80 -> 'פ'; 70 -> 'ע'; 60 -> 'ס'; 50 -> 'נ'; 40 -> 'מ'; 30 -> 'ל'; 20 -> 'כ'; else -> 'י' }); rest -= tens }
-            if (rest > 0) out.append(when (rest) { 9 -> 'ט'; 8 -> 'ח'; 7 -> 'ז'; 6 -> 'ו'; 5 -> 'ה'; 4 -> 'ד'; 3 -> 'ג'; 2 -> 'ב'; else -> 'א' })
-        }
-        if (out.length == 1) out.append('׳') else if (out.length > 1) out.insert(out.length - 1, '״')
-        return out.toString()
-    }
-
     private fun toast(message: String) = Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density + 0.5f).toInt()
 
-    @Deprecated("Back navigation routes to the home screen while settings are open.")
-    override fun onBackPressed() {
-        if (settingsShown) buildHomeScreen() else super.onBackPressed()
-    }
 }

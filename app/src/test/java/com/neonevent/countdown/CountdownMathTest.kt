@@ -4,96 +4,154 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 
 class CountdownMathTest {
-    @Test fun futureTargetIsSplitIntoUnits() {
-        val result = CountdownMath.calculate(90_061_000L, 0L)
-        assertFalse(result.complete)
-        assertEquals(1L, result.days)
-        assertEquals(1L, result.hours)
-        assertEquals(1L, result.minutes)
-        assertEquals(1L, result.seconds)
-    }
-
-    @Test fun targetAtNowIsComplete() {
-        assertTrue(CountdownMath.calculate(100L, 100L).complete)
-    }
-
-    @Test fun pastTargetIsComplete() {
-        assertTrue(CountdownMath.calculate(99L, 100L).complete)
-    }
-
-    @Test fun fractionalSecondRoundsUp() {
-        val result = CountdownMath.calculate(1_500L, 1_001L)
-        assertEquals(1L, result.seconds)
-        assertEquals(1L, result.totalSeconds)
-    }
-
-    @Test fun dateCountStaysUntilLocalMidnightAndThenChanges() {
-        val zone = ZoneId.of("UTC")
-        val today = LocalDate.of(2026, 11, 1)
-        val target = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val justBeforeMidnight = today.atTime(23, 59, 59).atZone(zone).toInstant().toEpochMilli()
-
-        val before = CountdownMath.calculateDateOnly(target, justBeforeMidnight, zone)
-        assertFalse(before.complete)
-        assertEquals(1L, before.days)
-        assertEquals(0L, before.hours)
-        assertEquals(0L, before.minutes)
-        assertEquals(1L, before.seconds)
-
-        val atMidnight = CountdownMath.calculateDateOnly(target, target, zone)
-        assertFalse(atMidnight.complete)
-        assertEquals(0L, atMidnight.days)
-        assertEquals(0L, atMidnight.hours)
-        assertEquals(0L, atMidnight.minutes)
-        assertEquals(0L, atMidnight.seconds)
-    }
-
-    @Test fun clockUnitsShowTimeUntilNextLocalMidnight() {
-        val zone = ZoneId.of("UTC")
-        val today = LocalDate.of(2026, 11, 1)
-        val target = today.plusDays(3).atStartOfDay(zone).toInstant().toEpochMilli()
-        val now = today.atTime(10, 15, 30).atZone(zone).toInstant().toEpochMilli()
-
-        val result = CountdownMath.calculateDateOnly(target, now, zone)
-        assertEquals(3L, result.days)
-        assertEquals(13L, result.hours)
-        assertEquals(44L, result.minutes)
-        assertEquals(30L, result.seconds)
-    }
-
-    @Test fun nextMidnightRespectsDaylightSavingTransition() {
-        val zone = ZoneId.of("Europe/Berlin")
-        val today = LocalDate.of(2026, 3, 29)
-        val target = today.plusDays(2).atStartOfDay(zone).toInstant().toEpochMilli()
-        val now = today.atTime(0, 30).atZone(zone).toInstant().toEpochMilli()
-
-        val result = CountdownMath.calculateDateOnly(target, now, zone)
-        assertEquals(2L, result.days)
-        // The spring DST change makes this local calendar day 23 elapsed hours.
-        assertEquals(22L, result.hours)
-        assertEquals(30L, result.minutes)
-        assertEquals(0L, result.seconds)
-    }
-
-    @Test fun eventDateShowsZeroButIsNotCompleteUntilNextLocalDate() {
+    @Test fun thirtyCalendarDaysAndFiveHoursAreReportedConsistently() {
         val zone = ZoneId.of("Asia/Jerusalem")
-        val eventDate = LocalDate.of(2026, 11, 1)
-        val target = eventDate.atStartOfDay(zone).toInstant().toEpochMilli()
-        val now = eventDate.atTime(12, 30).atZone(zone).toInstant().toEpochMilli()
+        val now = LocalDate.of(2026, 11, 15)
+            .atTime(19, 0)
+            .atZone(zone)
+            .toInstant()
+            .toEpochMilli()
+        val targetDate = LocalDate.of(2026, 12, 15)
 
-        val result = CountdownMath.calculateDateOnly(target, now, zone)
+        val daily = CountdownMath.calculateDateOnly(targetDate, now, zone)
+        val legacyLayout = CountdownMath.calculateCumulative(targetDate, now, zone)
+
+        assertEquals(30L, daily.days)
+        assertEquals(5L, daily.hours)
+        assertEquals(0L, daily.minutes)
+        assertEquals(0L, daily.seconds)
+        assertEquals(daily, legacyLayout)
+    }
+
+    @Test fun futureEventUsesDateDifferenceOnly() {
+        val result = CountdownMath.calculateDateOnly(
+            LocalDate.of(2026, 11, 4),
+            LocalDate.of(2026, 11, 1)
+        )
         assertFalse(result.complete)
-        assertEquals(0L, result.days)
+        assertEquals(3L, result.days)
         assertEquals(0L, result.hours)
         assertEquals(0L, result.minutes)
         assertEquals(0L, result.seconds)
-
-        val nextDay = eventDate.plusDays(1).atTime(LocalTime.MIDNIGHT).atZone(zone).toInstant().toEpochMilli()
-        assertTrue(CountdownMath.calculateDateOnly(target, nextDay, zone).complete)
     }
+
+    @Test fun oneSecondBeforeLocalMidnightIsStillPreviousDate() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val targetDate = LocalDate.of(2026, 11, 2)
+        val beforeMidnight = Instant.parse("2026-11-01T21:59:59Z").atZone(zone).toLocalDate()
+        val atMidnight = Instant.parse("2026-11-01T22:00:00Z").atZone(zone).toLocalDate()
+
+        assertEquals(1L, CountdownMath.calculateDateOnly(targetDate, beforeMidnight).days)
+        assertEquals(0L, CountdownMath.calculateDateOnly(targetDate, atMidnight).days)
+    }
+
+    @Test fun eventDateIsZeroAndNextLocalDateIsComplete() {
+        val eventDate = LocalDate.of(2026, 11, 1)
+        val today = CountdownMath.calculateDateOnly(eventDate, eventDate)
+        assertFalse(today.complete)
+        assertEquals(0L, today.days)
+        assertTrue(CountdownMath.calculateDateOnly(eventDate, eventDate.plusDays(1)).complete)
+    }
+
+    @Test fun daylightSavingSpringChangeDoesNotChangeDateDifference() {
+        val zone = ZoneId.of("Europe/Berlin")
+        val eventDate = LocalDate.of(2026, 3, 29)
+        val beforeClockJump = Instant.parse("2026-03-28T22:59:59Z").atZone(zone).toLocalDate()
+        val afterClockJump = Instant.parse("2026-03-29T01:00:00Z").atZone(zone).toLocalDate()
+
+        assertEquals(1L, CountdownMath.calculateDateOnly(eventDate, beforeClockJump).days)
+        assertEquals(0L, CountdownMath.calculateDateOnly(eventDate, afterClockJump).days)
+    }
+
+    @Test fun daylightSavingAutumnChangeDoesNotAddADay() {
+        val zone = ZoneId.of("Europe/Berlin")
+        val eventDate = LocalDate.of(2026, 10, 25)
+        val beforeRepeatedHour = Instant.parse("2026-10-24T21:59:59Z").atZone(zone).toLocalDate()
+        val afterRepeatedHour = Instant.parse("2026-10-25T02:30:00Z").atZone(zone).toLocalDate()
+
+        assertEquals(1L, CountdownMath.calculateDateOnly(eventDate, beforeRepeatedHour).days)
+        assertEquals(0L, CountdownMath.calculateDateOnly(eventDate, afterRepeatedHour).days)
+    }
+
+    @Test fun futureDateShowsTimeRemainingUntilLocalMidnight() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val now = Instant.parse("2026-11-01T20:29:59Z").toEpochMilli()
+        val result = CountdownMath.calculateDateOnly(
+            LocalDate.of(2026, 11, 2),
+            now,
+            zone
+        )
+
+        assertFalse(result.complete)
+        assertEquals(1L, result.days)
+        assertEquals(1L, result.hours)
+        assertEquals(30L, result.minutes)
+        assertEquals(1L, result.seconds)
+    }
+
+    @Test fun clockUnitsAreZeroOnEventDateAndEventCompletesAfterIt() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val eventDate = LocalDate.of(2026, 11, 2)
+        val onEventDate = Instant.parse("2026-11-02T10:00:00Z").toEpochMilli()
+        val nextDate = Instant.parse("2026-11-03T00:00:00Z").toEpochMilli()
+
+        val onEvent = CountdownMath.calculateDateOnly(eventDate, onEventDate, zone)
+        assertFalse(onEvent.complete)
+        assertEquals(0L, onEvent.days)
+        assertEquals(0L, onEvent.hours)
+        assertEquals(0L, onEvent.minutes)
+        assertEquals(0L, onEvent.seconds)
+        assertTrue(CountdownMath.calculateDateOnly(eventDate, nextDate, zone).complete)
+    }
+
+    @Test fun legacyCumulativeEntryPointUsesTheSameDailyCountdownValues() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val now = Instant.parse("2026-11-01T22:00:00Z").toEpochMilli() // Nov 2, 00:00 local
+        val eventDate = LocalDate.of(2026, 11, 4)
+
+        val legacyResult = CountdownMath.calculateCumulative(eventDate, now, zone)
+        val dailyResult = CountdownMath.calculateDateOnly(eventDate, now, zone)
+
+        assertEquals(dailyResult, legacyResult)
+        assertFalse(legacyResult.complete)
+        assertEquals(2L, legacyResult.days)
+        assertEquals(24L, legacyResult.hours)
+        assertEquals(0L, legacyResult.minutes)
+        assertEquals(0L, legacyResult.seconds)
+    }
+
+    @Test fun legacyCumulativeEntryPointRoundsUpTheLastPartialSecondWithoutChangingEventDay() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val eventDate = LocalDate.of(2026, 11, 4)
+        val oneSecondLeft = Instant.parse("2026-11-03T21:59:59.500Z").toEpochMilli()
+        val result = CountdownMath.calculateCumulative(eventDate, oneSecondLeft, zone)
+        assertEquals(1L, result.days)
+        assertEquals(0L, result.hours)
+        assertEquals(0L, result.minutes)
+        assertEquals(1L, result.seconds)
+
+        val atMidnight = Instant.parse("2026-11-03T22:00:00Z").toEpochMilli()
+        val onEventDate = CountdownMath.calculateCumulative(eventDate, atMidnight, zone)
+        assertFalse(onEventDate.complete)
+        assertEquals(0L, onEventDate.days)
+        assertEquals(0L, onEventDate.hours)
+        assertEquals(0L, onEventDate.minutes)
+        assertEquals(0L, onEventDate.seconds)
+    }
+
+    @Test fun dailyClockUsesTheNextLocalMidnightAcrossDaylightSavingChanges() {
+        val zone = ZoneId.of("Europe/Berlin")
+        val now = LocalDate.of(2026, 3, 29).atStartOfDay(zone).toInstant().toEpochMilli()
+        val result = CountdownMath.calculateDateOnly(LocalDate.of(2026, 3, 30), now, zone)
+        assertEquals(1L, result.days)
+        assertEquals(23L, result.hours)
+        assertEquals(0L, result.minutes)
+        assertEquals(0L, result.seconds)
+    }
+
 }
