@@ -26,6 +26,30 @@ object CountdownMath {
     }
 
     /**
+     * Counts the full duration until the selected event date begins in the device's
+     * local timezone. Each field is the total remaining amount in that unit.
+     * Seconds are rounded up so a positive remaining duration never shows zero.
+     */
+    fun calculateCumulative(
+        eventLocalDate: LocalDate,
+        nowMillis: Long,
+        zone: ZoneId = ZoneId.systemDefault()
+    ): CountdownParts {
+        val target = eventLocalDate.atStartOfDay(zone).toInstant()
+        val remainingMillis = Duration.between(Instant.ofEpochMilli(nowMillis), target).toMillis()
+        if (remainingMillis <= 0L) return CountdownParts(true, 0, 0, 0, 0)
+
+        val totalSeconds = ((remainingMillis + 999L) / 1000L).coerceAtLeast(1L)
+        return CountdownParts(
+            complete = false,
+            days = totalSeconds / 86_400L,
+            hours = totalSeconds / 3_600L,
+            minutes = totalSeconds / 60L,
+            seconds = totalSeconds
+        )
+    }
+
+    /**
      * Counts calendar days to the selected local event date and, until that date,
      * shows the time remaining to the next local midnight. This preserves the
      * original home-screen clock units without inventing an event time.

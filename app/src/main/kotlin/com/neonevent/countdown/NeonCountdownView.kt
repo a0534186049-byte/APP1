@@ -96,7 +96,12 @@ object NeonCountdownRenderer {
         }
 
         val centerX = w / 2f
-        val countdown = CountdownMath.calculateDateOnly(prefs.eventLocalDate(), nowMillis)
+        val eventDate = prefs.eventLocalDate()
+        val countdown = if (prefs.isCumulativeCountdown) {
+            CountdownMath.calculateCumulative(eventDate, nowMillis)
+        } else {
+            CountdownMath.calculateDateOnly(eventDate, nowMillis)
+        }
         val selected = (0..3).filter { prefs.isUnitVisible(it) }
         val lower = selected.filter { it in 1..3 } // Physical order: hours left, minutes center, seconds right.
         val geometry = HomeScreenGeometryCalculator.calculate(

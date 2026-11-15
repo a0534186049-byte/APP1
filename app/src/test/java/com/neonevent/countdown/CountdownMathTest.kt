@@ -89,4 +89,40 @@ class CountdownMathTest {
         assertEquals(0L, onEvent.seconds)
         assertTrue(CountdownMath.calculateDateOnly(eventDate, nextDate, zone).complete)
     }
+
+    @Test fun cumulativeModeShowsAllFourTotalUnitsForExactlyTwoDays() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val now = Instant.parse("2026-11-01T22:00:00Z").toEpochMilli() // Nov 2, 00:00 local
+        val result = CountdownMath.calculateCumulative(LocalDate.of(2026, 11, 4), now, zone)
+
+        assertFalse(result.complete)
+        assertEquals(2L, result.days)
+        assertEquals(48L, result.hours)
+        assertEquals(2_880L, result.minutes)
+        assertEquals(172_800L, result.seconds)
+    }
+
+    @Test fun cumulativeModeRoundsUpTheLastPartialSecondAndCompletesAtLocalMidnight() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val eventDate = LocalDate.of(2026, 11, 4)
+        val oneSecondLeft = Instant.parse("2026-11-03T21:59:59.500Z").toEpochMilli()
+        val result = CountdownMath.calculateCumulative(eventDate, oneSecondLeft, zone)
+        assertEquals(1L, result.seconds)
+        assertEquals(0L, result.minutes)
+        assertEquals(0L, result.hours)
+        assertEquals(0L, result.days)
+
+        val atMidnight = Instant.parse("2026-11-03T22:00:00Z").toEpochMilli()
+        assertTrue(CountdownMath.calculateCumulative(eventDate, atMidnight, zone).complete)
+    }
+
+    @Test fun cumulativeModeUsesRealElapsedDurationAcrossDaylightSavingChanges() {
+        val zone = ZoneId.of("Europe/Berlin")
+        val now = LocalDate.of(2026, 3, 28).atStartOfDay(zone).toInstant().toEpochMilli()
+        val result = CountdownMath.calculateCumulative(LocalDate.of(2026, 3, 30), now, zone)
+        assertEquals(47L, result.hours)
+        assertEquals(2_820L, result.minutes)
+        assertEquals(169_200L, result.seconds)
+    }
+
 }

@@ -74,14 +74,17 @@ class CountdownWidgetRemoteViewsInstrumentedTest {
                     "0%s"
                 )
                 observed += capture(42L * 60L * 1000L + 19_000L, "00:%s")
+                observed += capture(48L * 60L * 60L * 1000L + 15L * 60L * 1000L + 19_000L, "%s")
                 chronometer.stop()
             }
         }
-        assertEquals(4, observed.size)
+        assertEquals(5, observed.size)
         assertTrue(observed[0].matches(Regex("^12:42:1[0-9]$")))
         assertTrue(observed[1].matches(Regex("^09:42:1[0-9]$")))
         assertTrue(observed[2].matches(Regex("^01:42:1[0-9]$")))
         assertTrue(observed[3].matches(Regex("^00:42:1[0-9]$")))
+        assertTrue("Chronometer must keep total hours instead of wrapping at 24 hours: ${observed[4]}",
+            observed[4].matches(Regex("^48:15:1[0-9]$")))
     }
 
     @Test fun titleCanBeHiddenForTheNoTitleVariant() {

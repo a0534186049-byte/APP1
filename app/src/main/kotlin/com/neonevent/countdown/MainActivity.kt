@@ -303,8 +303,42 @@ class MainActivity : ComponentActivity() {
     private fun addDisplaySection(content: LinearLayout) {
         val card = settingsCard()
         card.addView(makeText("תצוגת הספירה", 20f, Color.WHITE, true))
-        card.addView(makeText("בחרו אילו יחידות זמן יוצגו בקוביות.", 14f, 0xFFCBD4E5.toInt(), false),
+        card.addView(makeText("בחרו שיטת ספירה. ברירת המחדל שומרת על התצוגה המוכרת.", 14f, 0xFFCBD4E5.toInt(), false),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(8) })
+        val modeRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutDirection = View.LAYOUT_DIRECTION_RTL
+        }
+        val dailyMode = makeButton("יומית – כמו היום") {
+            prefs.isCumulativeCountdown = false
+            afterSettingsChanged()
+            buildSettingsScreen()
+        }.apply {
+            background = roundBackground(
+                if (!prefs.isCumulativeCountdown) 0xCC24314B.toInt() else 0xFF18263D.toInt(),
+                if (!prefs.isCumulativeCountdown) gold else 0x887F9ABC.toInt(), 13
+            )
+        }
+        val cumulativeMode = makeButton("מצטברת – כל הזמן") {
+            prefs.isCumulativeCountdown = true
+            afterSettingsChanged()
+            buildSettingsScreen()
+        }.apply {
+            background = roundBackground(
+                if (prefs.isCumulativeCountdown) 0xCC24314B.toInt() else 0xFF18263D.toInt(),
+                if (prefs.isCumulativeCountdown) gold else 0x887F9ABC.toInt(), 13
+            )
+        }
+        modeRow.addView(dailyMode, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(5) })
+        modeRow.addView(cumulativeMode, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(5) })
+        card.addView(modeRow, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        card.addView(makeText(
+            if (prefs.isCumulativeCountdown)
+                "כל קובייה מציגה את הסכום הכולל שנותר: ימים, שעות, דקות ושניות. בווידג׳ט יוצגו הימים ושעון חי של שעות:דקות:שניות."
+            else
+                "במצב היומי הימים נספרים לפי התאריך, ושלוש יחידות הזמן מציגות את הזמן עד חצות הבא.",
+            13f, 0xFFCBD4E5.toInt(), false
+        ), LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         val names = listOf("ימים", "שעות", "דקות", "שניות")
         names.forEachIndexed { index, label ->
             val check = CheckBox(this).apply {

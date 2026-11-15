@@ -109,6 +109,11 @@ class CountdownPrefs(context: Context) {
         get() = prefs.getInt("units_mask", 15).coerceIn(0, 15)
         set(value) { prefs.edit().putInt("units_mask", value.coerceIn(0, 15)).apply() }
 
+    /** False keeps the original daily countdown; true shows total remaining units. */
+    var isCumulativeCountdown: Boolean
+        get() = prefs.getBoolean("cumulative_countdown_mode", false)
+        set(value) { prefs.edit().putBoolean("cumulative_countdown_mode", value).apply() }
+
     fun isUnitVisible(index: Int): Boolean = (unitsMask and (1 shl index)) != 0
 
     fun setHebrewDate(year: Int, month: Int, day: Int) {

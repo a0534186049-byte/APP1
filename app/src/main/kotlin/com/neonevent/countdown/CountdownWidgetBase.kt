@@ -109,8 +109,18 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             try {
                 val prefs = CountdownPrefs(context)
                 val now = System.currentTimeMillis()
-                val parts = CountdownMath.calculateDateOnly(prefs.eventLocalDate(), now)
-                val clock = WidgetClockSchedule.evaluate(prefs.eventLocalDate(), now)
+                val eventDate = prefs.eventLocalDate()
+                val cumulative = prefs.isCumulativeCountdown
+                val parts = if (cumulative) {
+                    CountdownMath.calculateCumulative(eventDate, now)
+                } else {
+                    CountdownMath.calculateDateOnly(eventDate, now)
+                }
+                val clock = if (cumulative) {
+                    WidgetClockSchedule.evaluateCumulative(eventDate, now)
+                } else {
+                    WidgetClockSchedule.evaluate(eventDate, now)
+                }
                 ids.forEach { id ->
                     val views = RemoteViews(context.packageName, R.layout.countdown_widget)
                     views.setViewVisibility(R.id.widget_title, if (showTitle && prefs.showTitle) View.VISIBLE else View.GONE)

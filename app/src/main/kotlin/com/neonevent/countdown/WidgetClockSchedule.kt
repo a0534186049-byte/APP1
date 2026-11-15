@@ -79,6 +79,34 @@ object WidgetClockSchedule {
         )
     }
 
+    /** Live full-duration clock for cumulative mode; midnight boundaries refresh the day count. */
+    fun evaluateCumulative(
+        eventLocalDate: LocalDate,
+        nowMillis: Long,
+        zone: ZoneId = ZoneId.systemDefault()
+    ): WidgetClockSnapshot {
+        val now = Instant.ofEpochMilli(nowMillis).atZone(zone)
+        val targetMillis = eventLocalDate.atStartOfDay(zone).toInstant().toEpochMilli()
+        val remaining = (targetMillis - nowMillis).coerceAtLeast(0L)
+        if (remaining == 0L) {
+            return WidgetClockSnapshot(false, null, 0L, "00:%s", emptyList())
+        }
+
+        val midnightMillis = now.toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val boundaries = buildList {
+            addBoundaryIfFuture(WidgetClockBoundary.TEN_HOURS, midnightMillis - TEN_HOURS_MS + 1_000L, nowMillis)
+            addBoundaryIfFuture(WidgetClockBoundary.ONE_HOUR, midnightMillis - ONE_HOUR_MS + 1_000L, nowMillis)
+            addBoundaryIfFuture(WidgetClockBoundary.MIDNIGHT, midnightMillis, nowMillis)
+        }
+        return WidgetClockSnapshot(
+            visible = true,
+            nextMidnightMillis = midnightMillis,
+            remainingMillis = remaining,
+            chronometerFormat = formatForRemaining(remaining),
+            boundaries = boundaries
+        )
+    }
+
     fun formatForRemaining(remainingMillis: Long): String = when {
         remainingMillis >= TEN_HOURS_MS -> "%s"
         remainingMillis >= ONE_HOUR_MS -> "0%s"
