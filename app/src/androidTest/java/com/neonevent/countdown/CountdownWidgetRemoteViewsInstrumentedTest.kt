@@ -1,16 +1,15 @@
 package com.neonevent.countdown
 
-import android.os.SystemClock
 import android.view.View
-import android.widget.Chronometer
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RemoteViews
-import androidx.test.core.app.ActivityScenario
+import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,72 +18,44 @@ import org.junit.runner.RunWith
 class CountdownWidgetRemoteViewsInstrumentedTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-    @Test fun countdownWidgetLayoutCanBeAppliedByRemoteViews() {
+    @Test fun countdownWidgetLayoutCanBeAppliedByRemoteViewsWithFourSeparateCubes() {
         val remoteViews = RemoteViews(context.packageName, R.layout.countdown_widget)
         val inflated = remoteViews.apply(context, FrameLayout(context))
 
         assertNotNull(inflated)
         assertNotNull(inflated.findViewById<View>(R.id.widget_background))
-        assertNotNull(inflated.findViewById<View>(R.id.widget_days_value))
-        assertNotNull(inflated.findViewById<View>(R.id.widget_time_value))
-        val timeCube = inflated.findViewById<LinearLayout>(R.id.widget_cube_time)
-        assertNotNull(timeCube)
-        assertEquals("Time cube should only contain the Chronometer; the label was removed.", 1, timeCube.childCount)
         assertNotNull(inflated.findViewById<View>(R.id.widget_background_overlay))
+
+        val cubes = listOf(
+            Triple(R.id.widget_cube_days, R.id.widget_days_value, R.id.widget_days_label),
+            Triple(R.id.widget_cube_hours, R.id.widget_hours_value, R.id.widget_hours_label),
+            Triple(R.id.widget_cube_minutes, R.id.widget_minutes_value, R.id.widget_minutes_label),
+            Triple(R.id.widget_cube_seconds, R.id.widget_seconds_value, R.id.widget_seconds_label)
+        )
+        cubes.forEach { (cubeId, valueId, labelId) ->
+            val cube = inflated.findViewById<LinearLayout>(cubeId)
+            assertNotNull("Countdown cube $cubeId must exist", cube)
+            assertEquals("Each cube must contain a number and its label", 2, cube.childCount)
+            assertNotNull(inflated.findViewById<View>(valueId))
+            assertNotNull(inflated.findViewById<View>(labelId))
+        }
+        assertNull("The merged HH:MM:SS Chronometer must not be present",
+            inflated.findViewById<View>(R.id.widget_time_value))
     }
 
-    @Test fun attachedRemoteViewsChronometerUsesFixedHourFormatsWhileCountingDown() {
-        val observed = mutableListOf<String>()
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.onActivity { activity ->
-                val host = FrameLayout(activity)
-                activity.setContentView(host)
-                val remoteViews = RemoteViews(context.packageName, R.layout.countdown_widget).apply {
-                    setChronometer(
-                        R.id.widget_time_value,
-                        SystemClock.elapsedRealtime() + 12L * 60L * 60L * 1000L + 42L * 60L * 1000L + 19_000L,
-                        "%s",
-                        true
-                    )
-                    setChronometerCountDown(R.id.widget_time_value, true)
-                }
-                val rendered = remoteViews.apply(activity, host)
-                host.addView(rendered, FrameLayout.LayoutParams(-1, -1))
-                val chronometer = rendered.findViewById<Chronometer>(R.id.widget_time_value)
-
-                fun capture(remainingMillis: Long, format: String): String {
-                    chronometer.stop()
-                    chronometer.setCountDown(true)
-                    chronometer.setBase(SystemClock.elapsedRealtime() + remainingMillis)
-                    chronometer.setFormat(format)
-                    chronometer.start()
-                    return chronometer.text.toString()
-                }
-
-                observed += capture(
-                    12L * 60L * 60L * 1000L + 42L * 60L * 1000L + 19_000L,
-                    "%s"
-                )
-                observed += capture(
-                    9L * 60L * 60L * 1000L + 42L * 60L * 1000L + 19_000L,
-                    "0%s"
-                )
-                observed += capture(
-                    1L * 60L * 60L * 1000L + 42L * 60L * 1000L + 19_000L,
-                    "0%s"
-                )
-                observed += capture(42L * 60L * 1000L + 19_000L, "00:%s")
-                observed += capture(48L * 60L * 60L * 1000L + 15L * 60L * 1000L + 19_000L, "%s")
-                chronometer.stop()
-            }
+    @Test fun remoteViewsDisplaysDaysHoursMinutesAndSecondsAsSeparateValues() {
+        val remoteViews = RemoteViews(context.packageName, R.layout.countdown_widget).apply {
+            setTextViewText(R.id.widget_days_value, "30")
+            setTextViewText(R.id.widget_hours_value, "05")
+            setTextViewText(R.id.widget_minutes_value, "42")
+            setTextViewText(R.id.widget_seconds_value, "09")
         }
-        assertEquals(5, observed.size)
-        assertTrue(observed[0].matches(Regex("^12:42:1[0-9]$")))
-        assertTrue(observed[1].matches(Regex("^09:42:1[0-9]$")))
-        assertTrue(observed[2].matches(Regex("^01:42:1[0-9]$")))
-        assertTrue(observed[3].matches(Regex("^00:42:1[0-9]$")))
-        assertTrue("Chronometer must keep total hours instead of wrapping at 24 hours: ${observed[4]}",
-            observed[4].matches(Regex("^48:15:1[0-9]$")))
+        val inflated = remoteViews.apply(context, FrameLayout(context))
+
+        assertEquals("30", inflated.findViewById<TextView>(R.id.widget_days_value).text.toString())
+        assertEquals("05", inflated.findViewById<TextView>(R.id.widget_hours_value).text.toString())
+        assertEquals("42", inflated.findViewById<TextView>(R.id.widget_minutes_value).text.toString())
+        assertEquals("09", inflated.findViewById<TextView>(R.id.widget_seconds_value).text.toString())
     }
 
     @Test fun titleCanBeHiddenForTheNoTitleVariant() {
@@ -93,5 +64,21 @@ class CountdownWidgetRemoteViewsInstrumentedTest {
         }
         val inflated = remoteViews.apply(context, FrameLayout(context))
         assertEquals(View.GONE, inflated.findViewById<View>(R.id.widget_title).visibility)
+    }
+
+    @Test fun eachCountdownCubeKeepsItsHebrewLabelOnASingleLine() {
+        val remoteViews = RemoteViews(context.packageName, R.layout.countdown_widget)
+        val inflated = remoteViews.apply(context, FrameLayout(context))
+        val labelIds = listOf(
+            R.id.widget_days_label,
+            R.id.widget_hours_label,
+            R.id.widget_minutes_label,
+            R.id.widget_seconds_label
+        )
+        labelIds.forEach { id ->
+            val label = inflated.findViewById<TextView>(id)
+            assertNotNull(label)
+            assertTrue("Label $id must be configured for one line", label.maxLines == 1)
+        }
     }
 }
