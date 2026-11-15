@@ -97,22 +97,20 @@ object NeonCountdownRenderer {
 
         val centerX = w / 2f
         val eventDate = prefs.eventLocalDate()
-        val countdown = if (prefs.isCumulativeCountdown) {
-            CountdownMath.calculateCumulative(eventDate, nowMillis)
-        } else {
-            CountdownMath.calculateDateOnly(eventDate, nowMillis)
-        }
+        // A date-only event always uses calendar days plus the clock until local midnight.
+        // The settings choice below changes only the visual arrangement of the four units.
+        val countdown = CountdownMath.calculateDateOnly(eventDate, nowMillis)
         val selected = (0..3).filter { prefs.isUnitVisible(it) }
-        val cumulativeMode = prefs.isCumulativeCountdown
-        val visibleUnits = if (cumulativeMode) selected else selected.filter { it in 1..3 }
+        val verticalLayout = prefs.isVerticalCountdownLayout
+        val visibleUnits = if (verticalLayout) selected else selected.filter { it in 1..3 }
         val geometry = HomeScreenGeometryCalculator.calculate(
             widthPx = w,
             heightPx = h,
             density = density,
             scaledDensity = prefs.sp(1f),
-            showDays = !cumulativeMode && selected.contains(0),
+            showDays = !verticalLayout && selected.contains(0),
             lowerCount = visibleUnits.size,
-            stackVertically = cumulativeMode
+            stackVertically = verticalLayout
         )
 
         if (prefs.showTitle) {
@@ -216,7 +214,7 @@ object NeonCountdownRenderer {
             )
         }
 
-        if (!cumulativeMode) geometry.dayCard?.let { drawBox(0, it) }
+        if (!verticalLayout) geometry.dayCard?.let { drawBox(0, it) }
         visibleUnits.forEachIndexed { index, unit ->
             geometry.lowerCards.getOrNull(index)?.let { drawBox(unit, it) }
         }
