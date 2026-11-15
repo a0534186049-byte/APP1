@@ -2,7 +2,6 @@ package com.neonevent.countdown
 
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
-import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.WallpaperManager
 import android.content.ActivityNotFoundException
@@ -11,8 +10,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
@@ -59,7 +56,6 @@ class MainActivity : ComponentActivity() {
         // Recalculate immediately after returning from the background or system settings.
         window.decorView.invalidate()
         CountdownWidgetBase.updateAllWidgets(this)
-        CountdownWidgetBase.scheduleBoundaries(this)
     }
 
     private fun buildHomeScreen() {
@@ -303,40 +299,40 @@ class MainActivity : ComponentActivity() {
     private fun addDisplaySection(content: LinearLayout) {
         val card = settingsCard()
         card.addView(makeText("תצוגת הספירה", 20f, Color.WHITE, true))
-        card.addView(makeText("בחרו שיטת ספירה. ברירת המחדל שומרת על התצוגה המוכרת.", 14f, 0xFFCBD4E5.toInt(), false),
+        card.addView(makeText("בחרו את סידור הקוביות. שיטת הספירה נשארת זהה בשתי התצוגות.", 14f, 0xFFCBD4E5.toInt(), false),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(8) })
         val modeRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutDirection = View.LAYOUT_DIRECTION_RTL
         }
-        val dailyMode = makeButton("יומית – כמו היום") {
-            prefs.isCumulativeCountdown = false
+        val dailyMode = makeButton("בשורה – כמו היום") {
+            prefs.isVerticalCountdownLayout = false
             afterSettingsChanged()
             buildSettingsScreen()
         }.apply {
             background = roundBackground(
-                if (!prefs.isCumulativeCountdown) 0xCC24314B.toInt() else 0xFF18263D.toInt(),
-                if (!prefs.isCumulativeCountdown) gold else 0x887F9ABC.toInt(), 13
+                if (!prefs.isVerticalCountdownLayout) 0xCC24314B.toInt() else 0xFF18263D.toInt(),
+                if (!prefs.isVerticalCountdownLayout) gold else 0x887F9ABC.toInt(), 13
             )
         }
-        val cumulativeMode = makeButton("מצטברת – כל הזמן") {
-            prefs.isCumulativeCountdown = true
+        val verticalMode = makeButton("בטור – תצוגה אנכית") {
+            prefs.isVerticalCountdownLayout = true
             afterSettingsChanged()
             buildSettingsScreen()
         }.apply {
             background = roundBackground(
-                if (prefs.isCumulativeCountdown) 0xCC24314B.toInt() else 0xFF18263D.toInt(),
-                if (prefs.isCumulativeCountdown) gold else 0x887F9ABC.toInt(), 13
+                if (prefs.isVerticalCountdownLayout) 0xCC24314B.toInt() else 0xFF18263D.toInt(),
+                if (prefs.isVerticalCountdownLayout) gold else 0x887F9ABC.toInt(), 13
             )
         }
         modeRow.addView(dailyMode, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(5) })
-        modeRow.addView(cumulativeMode, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(5) })
+        modeRow.addView(verticalMode, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(5) })
         card.addView(modeRow, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         card.addView(makeText(
-            if (prefs.isCumulativeCountdown)
-                "כל קובייה מציגה את הסכום הכולל שנותר: ימים, שעות, דקות ושניות. בווידג׳ט יוצגו הימים ושעון חי של שעות:דקות:שניות."
+            if (prefs.isVerticalCountdownLayout)
+                "הקוביות מסודרות בטור: ימים, שעות, דקות ושניות. הערכים מחושבים באותה שיטה יומית כמו בתצוגה האופקית."
             else
-                "במצב היומי הימים נספרים לפי התאריך, ושלוש יחידות הזמן מציגות את הזמן עד חצות הבא.",
+                "הקוביות מסודרות בשורה: ימים למעלה ושעות, דקות ושניות מתחת. הערכים מחושבים לפי התאריך ועד חצות הבא.",
             13f, 0xFFCBD4E5.toInt(), false
         ), LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         val names = listOf("ימים", "שעות", "דקות", "שניות")
@@ -373,18 +369,12 @@ class MainActivity : ComponentActivity() {
             LinearLayout.LayoutParams(-1, dp(50)))
         card.addView(makeButton("▣  הגדרות טפט חי") { openWallpaperPicker() },
             LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
-        card.addView(makeText("עדכון שעון הווידג׳ט", 17f, Color.WHITE, true),
+        card.addView(makeText("עדכון הווידג׳ט", 17f, Color.WHITE, true),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
-        val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
-        val exactAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
         card.addView(makeText(
-            if (exactAllowed) "הרשאת התזמון המדויק זמינה. Android עדיין עשוי לעכב אזעקות במצבי מערכת מסוימים."
-            else "כדי לשפר את דיוק המעברים בין תצוגות השעון וחצות, אפשר לאשר גישה מיוחדת „התראות ותזכורות”. ללא האישור Android עשוי לדחות את העדכונים.",
+            "הווידג׳ט מציג ארבע קוביות נפרדות ומתעדכן בקירוב פעם בדקה, בהתאם למדיניות Android. אין צורך בהרשאת התראות ותזכורות מיוחדת.",
             13.5f, 0xFFCBD4E5.toInt(), false
         ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
-        card.addView(makeButton(if (exactAllowed) "בדיקת הרשאת התזמון" else "פתיחת Alarms & reminders") {
-            requestExactAlarmAccess()
-        }, LinearLayout.LayoutParams(-1, dp(46)).apply { topMargin = dp(8) })
 
         card.addView(makeText("ווידג׳טים למסך הבית", 17f, Color.WHITE, true),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
@@ -542,31 +532,6 @@ class MainActivity : ComponentActivity() {
         prefs.backgroundBitmap()
         afterSettingsChanged()
         if (settingsShown) buildSettingsScreen() else buildHomeScreen()
-    }
-
-    private fun requestExactAlarmAccess() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            toast("בגרסת Android זו אין צורך בהרשאה המיוחדת")
-            return
-        }
-        val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
-        if (alarmManager.canScheduleExactAlarms()) {
-            toast("ההרשאה כבר מאושרת")
-            CountdownWidgetBase.scheduleBoundaries(this)
-            return
-        }
-        AlertDialog.Builder(this)
-            .setTitle("גישה מיוחדת: התראות ותזכורות")
-            .setMessage("ההרשאה מאפשרת לתזמן את שלושת המעברים החשובים של שעון הווידג׳ט בלבד. אם לא תאשר, השעון ימשיך לפעול אך Android עשוי לעכב את שינויי התצוגה ואת ההסתרה בחצות. אם ההרשאה תבוטל, Android מבטל אזעקות מדויקות ואינו משדר הודעת ביטול; בפתיחה הבאה של האפליקציה נבדוק מחדש ונעבור לתזמון לא מדויק.")
-            .setNegativeButton("לא עכשיו", null)
-            .setPositiveButton("פתיחת הגדרות") { _, _ ->
-                runCatching {
-                    startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                        Uri.parse("package:" + packageName)))
-                }.onFailure {
-                    unsupported("לא ניתן לפתוח את מסך Alarms & reminders במכשיר הזה. אפשר למצוא את האפליקציה בהגדרות > אפליקציות > גישה מיוחדת.")
-                }
-            }.show()
     }
 
     private fun openDreamSettings() {
