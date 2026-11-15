@@ -1,6 +1,8 @@
 package com.neonevent.countdown
 
 import android.view.View
+import android.view.ViewGroup
+import android.widget.Chronometer
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RemoteViews
@@ -8,8 +10,8 @@ import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,8 +41,8 @@ class CountdownWidgetRemoteViewsInstrumentedTest {
             assertNotNull(inflated.findViewById<View>(valueId))
             assertNotNull(inflated.findViewById<View>(labelId))
         }
-        assertNull("The merged HH:MM:SS Chronometer must not be present",
-            inflated.findViewById<View>(R.id.widget_time_value))
+        assertFalse("The merged HH:MM:SS Chronometer must not be present",
+            containsChronometer(inflated))
     }
 
     @Test fun remoteViewsDisplaysDaysHoursMinutesAndSecondsAsSeparateValues() {
@@ -80,5 +82,11 @@ class CountdownWidgetRemoteViewsInstrumentedTest {
             assertNotNull(label)
             assertTrue("Label $id must be configured for one line", label.maxLines == 1)
         }
+    }
+
+    private fun containsChronometer(view: View): Boolean = when (view) {
+        is Chronometer -> true
+        is ViewGroup -> (0 until view.childCount).any { containsChronometer(view.getChildAt(it)) }
+        else -> false
     }
 }
