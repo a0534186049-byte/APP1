@@ -10,11 +10,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.RectF
 import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
-import android.os.SystemClock
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
@@ -26,137 +23,181 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         when (intent.action) {
-            ACTION_WIDGET_TICK, WidgetClockBoundary.TEN_HOURS.action,
-            WidgetClockBoundary.ONE_HOUR.action, WidgetClockBoundary.MIDNIGHT.action,
-            ACTION_EXACT_ALARM_PERMISSION_CHANGED, Intent.ACTION_BOOT_COMPLETED,
-            Intent.ACTION_MY_PACKAGE_REPLACED, Intent.ACTION_TIME_CHANGED,
+            ACTION_WIDGET_TICK,
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED -> {
-                updateAllWidgets(context)
-                scheduleBoundaries(context)
+                updateThisProvider(context)
+                scheduleTicksIfNeeded(context)
             }
         }
     }
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         updateProvider(context, manager, ids, displaysTitle())
-        if (ids.isNotEmpty()) scheduleBoundaries(context)
+        if (ids.isNotEmpty()) scheduleTicks(context)
     }
 
-    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        manager: AppWidgetManager,
+        id: Int,
+        options: Bundle
+    ) {
         super.onAppWidgetOptionsChanged(context, manager, id, options)
         updateProvider(context, manager, intArrayOf(id), displaysTitle())
     }
 
-    override fun onEnabled(context: Context) { super.onEnabled(context); scheduleBoundaries(context) }
+    override fun onEnabled(context: Context) {
+        super.onEnabled(context)
+        scheduleTicksIfNeeded(context)
+    }
+
     override fun onDisabled(context: Context) {
-        if (!hasWidgets(context)) cancelBoundaries(context)
+        cancelTicks(context)
         super.onDisabled(context)
+    }
+
+    private fun updateThisProvider(context: Context) {
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = manager.getAppWidgetIds(ComponentName(context, javaClass))
+        updateProvider(context, manager, ids, displaysTitle())
+    }
+
+    private fun scheduleTicksIfNeeded(context: Context) {
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = manager.getAppWidgetIds(ComponentName(context, javaClass))
+        if (ids.isNotEmpty()) scheduleTicks(context) else cancelTicks(context)
+    }
+
+    /**
+     * Restore the previous four-field widget refresh. Android batches this inexact
+     * non-wakeup alarm; every delivery recalculates from the saved Hebrew target date.
+     */
+    private fun scheduleTicks(context: Context) {
+        val pending = tickPendingIntent(context)
+        val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        runCatching {
+            alarm.setInexactRepeating(
+                AlarmManager.RTC,
+                System.currentTimeMillis() + REFRESH_INTERVAL_MS,
+                REFRESH_INTERVAL_MS,
+                pending
+            )
+        }.onFailure { Log.e(TAG, "Unable to schedule the widget refresh", it) }
+    }
+
+    private fun cancelTicks(context: Context) {
+        val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val pending = tickPendingIntent(context)
+        alarm.cancel(pending)
+        pending.cancel()
+    }
+
+    private fun tickPendingIntent(context: Context): PendingIntent {
+        val requestCode = if (displaysTitle()) REQUEST_WITH_TITLE else REQUEST_NO_TITLE
+        return PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            Intent(context, javaClass).setAction(ACTION_WIDGET_TICK),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     companion object {
         const val ACTION_WIDGET_TICK = "com.neonevent.countdown.WIDGET_TICK"
-        const val ACTION_EXACT_ALARM_PERMISSION_CHANGED = "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
         private const val TAG = "CountdownWidget"
+        private const val REQUEST_WITH_TITLE = 9911
+        private const val REQUEST_NO_TITLE = 9912
+        private const val REFRESH_INTERVAL_MS = 60_000L
 
         fun updateAllWidgets(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
-            updateProvider(context, manager, manager.getAppWidgetIds(ComponentName(context, CountdownWidgetWithTitleProvider::class.java)), true)
-            updateProvider(context, manager, manager.getAppWidgetIds(ComponentName(context, CountdownWidgetNoTitleProvider::class.java)), false)
+            updateProvider(
+                context,
+                manager,
+                manager.getAppWidgetIds(
+                    ComponentName(context, CountdownWidgetWithTitleProvider::class.java)
+                ),
+                true
+            )
+            updateProvider(
+                context,
+                manager,
+                manager.getAppWidgetIds(
+                    ComponentName(context, CountdownWidgetNoTitleProvider::class.java)
+                ),
+                false
+            )
         }
 
-        private fun hasWidgets(context: Context): Boolean {
-            val m = AppWidgetManager.getInstance(context)
-            return m.getAppWidgetIds(ComponentName(context, CountdownWidgetWithTitleProvider::class.java)).isNotEmpty() ||
-                m.getAppWidgetIds(ComponentName(context, CountdownWidgetNoTitleProvider::class.java)).isNotEmpty()
-        }
-
-        fun scheduleBoundaries(context: Context) {
-            if (!hasWidgets(context)) { cancelBoundaries(context); return }
-            val clock = WidgetClockSchedule.evaluate(CountdownPrefs(context).eventLocalDate(), System.currentTimeMillis())
-            val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            val exact = Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()
-            WidgetClockBoundary.values().forEach { b ->
-                val pi = boundaryPendingIntent(context, b)
-                alarm.cancel(pi)
-                clock.boundaries.firstOrNull { it.boundary == b }?.let { event ->
-                    val exactSet = exact && runCatching {
-                        alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, event.triggerAtMillis, pi)
-                    }.onFailure { Log.w(TAG, "Exact alarm unavailable for ${b.name}; falling back to inexact", it) }.isSuccess
-                    if (!exactSet) {
-                        runCatching {
-                            alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, event.triggerAtMillis, pi)
-                        }.onFailure { Log.e(TAG, "Unable to schedule fallback alarm for ${b.name}", it) }
-                    }
-                }
-            }
-        }
-
-        private fun cancelBoundaries(context: Context) {
-            val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            WidgetClockBoundary.values().forEach { b ->
-                val pi = boundaryPendingIntent(context, b)
-                alarm.cancel(pi); pi.cancel()
-            }
-        }
-
-        private fun boundaryPendingIntent(context: Context, b: WidgetClockBoundary) =
-            PendingIntent.getBroadcast(context, b.requestCode,
-                Intent(context, CountdownWidgetWithTitleProvider::class.java).setAction(b.action),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-
-        private fun updateProvider(context: Context, manager: AppWidgetManager, ids: IntArray, showTitle: Boolean) {
+        private fun updateProvider(
+            context: Context,
+            manager: AppWidgetManager,
+            ids: IntArray,
+            showTitle: Boolean
+        ) {
             if (ids.isEmpty()) return
             try {
                 val prefs = CountdownPrefs(context)
                 val now = System.currentTimeMillis()
-                val eventDate = prefs.eventLocalDate()
-                val cumulative = prefs.isCumulativeCountdown
-                val parts = if (cumulative) {
-                    CountdownMath.calculateCumulative(eventDate, now)
-                } else {
-                    CountdownMath.calculateDateOnly(eventDate, now)
-                }
-                val clock = if (cumulative) {
-                    WidgetClockSchedule.evaluateCumulative(eventDate, now)
-                } else {
-                    WidgetClockSchedule.evaluate(eventDate, now)
-                }
+                val parts = CountdownMath.calculateDateOnly(prefs.eventLocalDate(), now)
+
                 ids.forEach { id ->
                     val views = RemoteViews(context.packageName, R.layout.countdown_widget)
-                    views.setViewVisibility(R.id.widget_title, if (showTitle && prefs.showTitle) View.VISIBLE else View.GONE)
+                    views.setViewVisibility(
+                        R.id.widget_title,
+                        if (showTitle && prefs.showTitle) View.VISIBLE else View.GONE
+                    )
                     views.setTextViewText(R.id.widget_title, prefs.eventTitle)
                     views.setTextViewText(R.id.widget_days_value, parts.days.toString())
+                    views.setTextViewText(R.id.widget_hours_value, parts.hours.toString().padStart(2, '0'))
+                    views.setTextViewText(R.id.widget_minutes_value, parts.minutes.toString().padStart(2, '0'))
+                    views.setTextViewText(R.id.widget_seconds_value, parts.seconds.toString().padStart(2, '0'))
                     views.setTextViewText(R.id.widget_target_date, prefs.formattedTargetDate())
-                    views.setViewVisibility(R.id.widget_cube_time, if (clock.visible) View.VISIBLE else View.GONE)
-                    if (clock.visible) {
-                        views.setChronometerCountDown(R.id.widget_time_value, true)
-                        views.setChronometer(
-                            R.id.widget_time_value,
-                            SystemClock.elapsedRealtime() + clock.remainingMillis,
-                            clock.chronometerFormat,
-                            true
-                        )
-                    }
 
-                    val widgetBackground = widgetBackgroundBitmap(
-                        context, manager.getAppWidgetOptions(id), prefs.widgetBackgroundBitmap(), showTitle, false
+                    val background = widgetBackgroundBitmap(
+                        context,
+                        manager.getAppWidgetOptions(id),
+                        prefs.widgetBackgroundBitmap(),
+                        showTitle
                     )
-                    widgetBackground?.let { views.setImageViewBitmap(R.id.widget_background, it) }
-                    // A dedicated fixed background protects widget aspect ratio and text contrast.
+                    background?.let { views.setImageViewBitmap(R.id.widget_background, it) }
                     views.setViewVisibility(R.id.widget_background_overlay, View.VISIBLE)
+
+                    val goldText = 0xFFFFE8B2.toInt()
                     views.setTextColor(R.id.widget_title, 0xFFFFF2D7.toInt())
-                    views.setTextColor(R.id.widget_target_date, 0xFFFFE8B2.toInt())
-                    listOf(R.id.widget_days_value, R.id.widget_time_value, R.id.widget_days_label)
-                        .forEach { views.setTextColor(it, 0xFFFFE8B2.toInt()) }
-                    listOf(R.id.widget_cube_days, R.id.widget_cube_time).forEach {
+                    views.setTextColor(R.id.widget_target_date, goldText)
+                    listOf(
+                        R.id.widget_days_value,
+                        R.id.widget_days_label,
+                        R.id.widget_hours_value,
+                        R.id.widget_hours_label,
+                        R.id.widget_minutes_value,
+                        R.id.widget_minutes_label,
+                        R.id.widget_seconds_value,
+                        R.id.widget_seconds_label
+                    ).forEach { views.setTextColor(it, goldText) }
+
+                    listOf(
+                        R.id.widget_cube_days,
+                        R.id.widget_cube_hours,
+                        R.id.widget_cube_minutes,
+                        R.id.widget_cube_seconds
+                    ).forEach {
                         views.setInt(it, "setBackgroundResource", R.drawable.widget_cube_gold)
                     }
+
                     manager.updateAppWidget(id, views)
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to update countdown widget", e)
+            } catch (error: Exception) {
+                Log.e(TAG, "Failed to update countdown widget", error)
                 val fallback = RemoteViews(context.packageName, R.layout.countdown_widget_error)
-                ids.forEach { runCatching { manager.updateAppWidget(it, fallback) } }
+                ids.forEach { id ->
+                    runCatching { manager.updateAppWidget(id, fallback) }
+                        .onFailure { Log.e(TAG, "Unable to apply the widget fallback", it) }
+                }
             }
         }
 
@@ -164,10 +205,11 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             context: Context,
             options: Bundle,
             source: Bitmap?,
-            showTitle: Boolean,
-            personal: Boolean
+            showTitle: Boolean
         ): Bitmap? {
-            if (source == null || source.isRecycled || source.width <= 0 || source.height <= 0) return null
+            if (source == null || source.isRecycled || source.width <= 0 || source.height <= 0) {
+                return null
+            }
 
             val minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
             val maxWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH)
@@ -183,11 +225,13 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             val output = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.RGB_565)
             val canvas = Canvas(output)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-            if (personal) {
-                BackgroundEdgeFiller.draw(canvas, source, widthPx.toFloat(), heightPx.toFloat(), paint)
-            } else {
-                BackgroundEdgeFiller.drawCenterCrop(canvas, source, widthPx.toFloat(), heightPx.toFloat(), paint)
-            }
+            BackgroundEdgeFiller.drawCenterCrop(
+                canvas,
+                source,
+                widthPx.toFloat(),
+                heightPx.toFloat(),
+                paint
+            )
             return output
         }
     }
