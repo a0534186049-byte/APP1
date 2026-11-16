@@ -68,20 +68,26 @@ class MainActivity : ComponentActivity() {
         val frame = FrameLayout(this).apply { setBackgroundColor(ink); layoutDirection = View.LAYOUT_DIRECTION_RTL }
         frame.addView(NeonCountdownView(this), FrameLayout.LayoutParams(-1, -1))
 
+        val compactCumulativeControls = prefs.isCumulativeCountdown
         val settings = TextView(this).apply {
             text = "⚙"
-            textSize = 27f
+            textSize = if (compactCumulativeControls) 23f else 27f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            background = roundBackground(0xD60B1422.toInt(), 0xB8FFFFFF.toInt(), 28)
+            background = roundBackground(
+                0xD60B1422.toInt(), 0xB8FFFFFF.toInt(),
+                if (compactCumulativeControls) 24 else 28
+            )
             contentDescription = "הגדרות"
             elevation = dp(4).toFloat()
             setOnClickListener { buildSettingsScreen() }
         }
         // Use physical LEFT gravity, not START, so RTL layout never mirrors this button.
-        frame.addView(settings, FrameLayout.LayoutParams(dp(54), dp(54), Gravity.TOP or Gravity.LEFT).apply {
-            topMargin = dp(18)
-            leftMargin = dp(16)
+        // Only cumulative mode gets the smaller, higher gear; the original display is unchanged.
+        val settingsSize = if (compactCumulativeControls) dp(48) else dp(54)
+        frame.addView(settings, FrameLayout.LayoutParams(settingsSize, settingsSize, Gravity.TOP or Gravity.LEFT).apply {
+            topMargin = if (compactCumulativeControls) dp(8) else dp(18)
+            leftMargin = if (compactCumulativeControls) dp(12) else dp(16)
         })
         setContentView(frame)
     }
@@ -303,8 +309,24 @@ class MainActivity : ComponentActivity() {
     private fun addDisplaySection(content: LinearLayout) {
         val card = settingsCard()
         card.addView(makeText("תצוגת הספירה", 20f, Color.WHITE, true))
-        card.addView(makeText("בחרו אילו יחידות זמן יוצגו בקוביות.", 14f, 0xFFCBD4E5.toInt(), false),
+        card.addView(makeText("בחרו את אופן הצגת הזמן שנותר.", 14f, 0xFFCBD4E5.toInt(), false),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(8) })
+        val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
+        fun modeButton(label: String, cumulative: Boolean): Button = makeButton(label) {
+            prefs.isCumulativeCountdown = cumulative
+            afterSettingsChanged()
+            buildSettingsScreen()
+        }.apply {
+            background = roundBackground(
+                if (prefs.isCumulativeCountdown == cumulative) 0xCC24314B.toInt() else 0xFF18263D.toInt(),
+                if (prefs.isCumulativeCountdown == cumulative) gold else 0x887F9ABC.toInt(), 13
+            )
+        }
+        modeRow.addView(modeButton("תצוגה רגילה", false), LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(5) })
+        modeRow.addView(modeButton("ספירה מצטברת", true), LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(5) })
+        card.addView(modeRow, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        card.addView(makeText(if (prefs.isCumulativeCountdown) "במצב המצטבר כל קובייה מציגה את הסכום הכולל שנותר." else "בתצוגה הרגילה נשמרים הגודל והסידור הקיימים.", 13f, 0xFFCBD4E5.toInt(), false),
+            LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         val names = listOf("ימים", "שעות", "דקות", "שניות")
         names.forEachIndexed { index, label ->
             val check = CheckBox(this).apply {

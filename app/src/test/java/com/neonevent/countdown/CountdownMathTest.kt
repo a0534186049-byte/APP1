@@ -89,4 +89,49 @@ class CountdownMathTest {
         assertEquals(0L, onEvent.seconds)
         assertTrue(CountdownMath.calculateDateOnly(eventDate, nextDate, zone).complete)
     }
+
+    @Test fun cumulativeModeShowsTotalDaysHoursMinutesAndSecondsForExactlyTwoDays() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val now = LocalDate.of(2026, 11, 2).atStartOfDay(zone).toInstant().toEpochMilli()
+        val result = CountdownMath.calculateCumulative(LocalDate.of(2026, 11, 4), now, zone)
+        assertFalse(result.complete)
+        assertEquals(2L, result.days)
+        assertEquals(48L, result.hours)
+        assertEquals(2_880L, result.minutes)
+        assertEquals(172_800L, result.seconds)
+    }
+
+    @Test fun cumulativeModeUsesActualRemainingTimeIncludingTheLastPartialDay() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val now = java.time.ZonedDateTime.of(2026, 11, 2, 18, 12, 38, 0, zone).toInstant().toEpochMilli()
+        val result = CountdownMath.calculateCumulative(LocalDate.of(2027, 3, 11), now, zone)
+        assertEquals(128L, result.days)
+        assertEquals(3_077L, result.hours)
+        assertEquals(184_667L, result.minutes)
+        assertEquals(11_080_042L, result.seconds)
+    }
+
+    @Test fun cumulativeValuesAreAllDerivedFromTheSameRealRemainingDuration() {
+        val zone = ZoneId.of("UTC")
+        val target = LocalDate.of(2026, 11, 4)
+        val now = target.minusDays(2).atStartOfDay(zone).toInstant().toEpochMilli() + 1_234L
+        val first = CountdownMath.calculateCumulative(target, now, zone)
+        val nextSecond = CountdownMath.calculateCumulative(target, now + 1_000L, zone)
+        assertEquals(first.seconds / 60L, first.minutes)
+        assertEquals(first.seconds / 3_600L, first.hours)
+        assertEquals(first.seconds - 1L, nextSecond.seconds)
+    }
+
+    @Test fun cumulativeModeUsesRealElapsedHoursAcrossDaylightSavingChanges() {
+        val zone = ZoneId.of("America/New_York")
+        val springStart = LocalDate.of(2025, 3, 8).atStartOfDay(zone).toInstant().toEpochMilli()
+        val spring = CountdownMath.calculateCumulative(LocalDate.of(2025, 3, 10), springStart, zone)
+        assertEquals(47L, spring.hours)
+        assertEquals(2_820L, spring.minutes)
+        val autumnStart = LocalDate.of(2025, 11, 1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val autumn = CountdownMath.calculateCumulative(LocalDate.of(2025, 11, 3), autumnStart, zone)
+        assertEquals(49L, autumn.hours)
+        assertEquals(2_940L, autumn.minutes)
+    }
+
 }

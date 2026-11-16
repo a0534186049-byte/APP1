@@ -178,7 +178,7 @@ jobs:
           fi
 
       - name: Verify Preview APK matches Latest APK signer and package
-        if: github.event_name == 'pull_request' && github.event.pull_request.number == 6 && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'cumulative-countdown-clean-baseline-20261116'
         id: preview_metadata
         shell: bash
         env:
@@ -245,7 +245,7 @@ jobs:
           echo "Preview APK SHA-256: $apk_sha256"
 
       - name: Publish or update the Preview APK pre-release
-        if: github.event_name == 'pull_request' && github.event.pull_request.number == 6 && github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'cumulative-countdown-clean-baseline-20261116'
         id: publish_preview
         shell: bash
         env:
@@ -258,15 +258,15 @@ jobs:
 
           if gh release view "$release_tag" >/dev/null 2>&1; then
             gh release edit "$release_tag" --target "$build_commit" --title "Preview APK" \
-              --notes "Pre-release build of PR #6. Updated after every successful PR build. This release is separate from Latest APK." --prerelease
+              --notes "Pre-release build of the cumulative countdown branch. Updated after every successful PR build. This release is separate from Latest APK." --prerelease
           else
             gh release create "$release_tag" --target "$build_commit" --title "Preview APK" \
-              --notes "Pre-release build of PR #6. Updated after every successful PR build. This release is separate from Latest APK." --prerelease
+              --notes "Pre-release build of the cumulative countdown branch. Updated after every successful PR build. This release is separate from Latest APK." --prerelease
           fi
 
           gh release upload "$release_tag" "$apk" --clobber
           gh release edit "$release_tag" --title "Preview APK" \
-            --notes "Automatically updated from PR #6. Build commit: $build_commit. Latest verified APK: app-release.apk." --prerelease
+            --notes "Automatically updated from the cumulative countdown branch. Build commit: $build_commit. Latest verified APK: app-release.apk." --prerelease
 
           release_json="$(gh release view "$release_tag" --json tagName,isPrerelease,assets,url)"
           echo "$release_json" | jq .
