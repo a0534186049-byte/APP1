@@ -303,8 +303,24 @@ class MainActivity : ComponentActivity() {
     private fun addDisplaySection(content: LinearLayout) {
         val card = settingsCard()
         card.addView(makeText("תצוגת הספירה", 20f, Color.WHITE, true))
-        card.addView(makeText("בחרו אילו יחידות זמן יוצגו בקוביות.", 14f, 0xFFCBD4E5.toInt(), false),
+        card.addView(makeText("בחרו את אופן הצגת הזמן שנותר.", 14f, 0xFFCBD4E5.toInt(), false),
             LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4); bottomMargin = dp(8) })
+        val modeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; layoutDirection = View.LAYOUT_DIRECTION_RTL }
+        fun modeButton(label: String, cumulative: Boolean): Button = makeButton(label) {
+            prefs.isCumulativeCountdown = cumulative
+            afterSettingsChanged()
+            buildSettingsScreen()
+        }.apply {
+            background = roundBackground(
+                if (prefs.isCumulativeCountdown == cumulative) 0xCC24314B.toInt() else 0xFF18263D.toInt(),
+                if (prefs.isCumulativeCountdown == cumulative) gold else 0x887F9ABC.toInt(), 13
+            )
+        }
+        modeRow.addView(modeButton("תצוגה רגילה", false), LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(5) })
+        modeRow.addView(modeButton("ספירה מצטברת", true), LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(5) })
+        card.addView(modeRow, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        card.addView(makeText(if (prefs.isCumulativeCountdown) "במצב המצטבר כל קובייה מציגה את הסכום הכולל שנותר." else "בתצוגה הרגילה נשמרים הגודל והסידור הקיימים.", 13f, 0xFFCBD4E5.toInt(), false),
+            LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         val names = listOf("ימים", "שעות", "דקות", "שניות")
         names.forEachIndexed { index, label ->
             val check = CheckBox(this).apply {

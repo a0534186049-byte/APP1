@@ -96,17 +96,16 @@ object NeonCountdownRenderer {
         }
 
         val centerX = w / 2f
-        val countdown = CountdownMath.calculateDateOnly(prefs.eventLocalDate(), nowMillis)
+        val cumulativeMode = prefs.isCumulativeCountdown
+        val countdown = if (cumulativeMode) CountdownMath.calculateCumulative(prefs.eventLocalDate(), nowMillis)
+            else CountdownMath.calculateDateOnly(prefs.eventLocalDate(), nowMillis)
         val selected = (0..3).filter { prefs.isUnitVisible(it) }
-        val lower = selected.filter { it in 1..3 } // Physical order: hours left, minutes center, seconds right.
-        val geometry = HomeScreenGeometryCalculator.calculate(
-            widthPx = w,
-            heightPx = h,
-            density = density,
-            scaledDensity = prefs.sp(1f),
-            showDays = selected.contains(0),
-            lowerCount = lower.size
-        )
+        val displayedUnits = if (cumulativeMode) selected else selected.filter { it in 1..3 }
+        val geometry = if (cumulativeMode) {
+            HomeScreenGeometryCalculator.calculateCumulative(w, h, density, prefs.sp(1f), displayedUnits.size)
+        } else {
+            HomeScreenGeometryCalculator.calculate(w, h, density, prefs.sp(1f), selected.contains(0), displayedUnits.size)
+        }
 
         if (prefs.showTitle) {
             paint.color = if (isPersonal) {
@@ -199,8 +198,8 @@ object NeonCountdownRenderer {
                 label = label,
                 numberTypeface = prefs.homeHeadingTypeface(),
                 bodyTypeface = prefs.homeBodyTypeface(),
-                numberSize = prefs.sp(if (isDays) 44f else 39f),
-                labelSize = prefs.sp(17f),
+                numberSize = prefs.sp(if (cumulativeMode) 30f else if (isDays) 44f else 39f),
+                labelSize = prefs.sp(if (cumulativeMode) 14f else 17f),
                 maxWidth = bounds.width * 0.90f,
                 maxHeight = bounds.height * 0.90f,
                 numberColor = numberColor,
@@ -209,8 +208,8 @@ object NeonCountdownRenderer {
             )
         }
 
-        geometry.dayCard?.let { drawBox(0, it) }
-        lower.forEachIndexed { index, unit ->
+        if (!cumulativeMode) geometry.dayCard?.let { drawBox(0, it) }
+        displayedUnits.forEachIndexed { index, unit ->
             geometry.lowerCards.getOrNull(index)?.let { drawBox(unit, it) }
         }
 

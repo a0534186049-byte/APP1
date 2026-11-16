@@ -131,4 +131,30 @@ class HomeScreenGeometryCalculatorTest {
             assertTrue(layout.quoteMaxHeight >= 0f)
         }
     }
+
+    @Test fun cumulativeLayoutStacksAllFourSelectedUnitsInsideCompactPortraitAndLandscapeScreens() {
+        val sizes = listOf(320f to 640f, 360f to 780f, 411f to 915f, 640f to 360f)
+        sizes.forEach { (width, height) ->
+            val layout = HomeScreenGeometryCalculator.calculateCumulative(width, height, 1f, 1f, 4)
+            assertEquals(null, layout.dayCard)
+            assertEquals(4, layout.lowerCards.size)
+            val cards = layout.lowerCards
+            cards.forEach { card ->
+                assertTrue(card.left >= 0f)
+                assertTrue(card.right <= width + 0.01f)
+                assertTrue(card.top >= layout.titleBaseline)
+                assertTrue(card.height > 0f)
+            }
+            for (index in 1 until cards.size) assertTrue(cards[index - 1].bottom < cards[index].top)
+            assertTrue(cards.last().bottom < layout.dateBaseline)
+            assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= height + 0.01f)
+        }
+    }
+
+    @Test fun dailyGeometryRemainsOnTheOriginalCalculator() {
+        val daily = HomeScreenGeometryCalculator.calculate(360f, 640f, 1f, 1f, true, 3)
+        assertEquals(3, daily.lowerCards.size)
+        assertTrue(daily.dayCard != null)
+    }
+
 }

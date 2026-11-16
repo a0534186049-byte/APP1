@@ -80,4 +80,26 @@ class WidgetClockScheduleTest {
         )
         assertEquals(25L * 60L * 60L * 1000L, autumn.remainingMillis)
     }
+
+    @Test fun cumulativeWidgetChronometerKeepsTotalHoursBeyondTwentyFour() {
+        val zone = ZoneId.of("UTC")
+        val now = ZonedDateTime.of(2026, 5, 2, 0, 0, 0, 0, zone).toInstant().toEpochMilli()
+        val snapshot = WidgetClockSchedule.evaluateCumulative(LocalDate.of(2026, 5, 4), now, zone)
+        assertTrue(snapshot.visible)
+        assertEquals(48L * 60L * 60L * 1000L, snapshot.remainingMillis)
+        assertEquals("%s", snapshot.chronometerFormat)
+        assertEquals(listOf(WidgetClockBoundary.MIDNIGHT), snapshot.boundaries.map { it.boundary })
+        assertEquals(now + 24L * 60L * 60L * 1000L, snapshot.nextMidnightMillis)
+    }
+
+    @Test fun cumulativeWidgetClockStopsAtTheStartOfTheSelectedDate() {
+        val zone = ZoneId.of("Asia/Jerusalem")
+        val target = LocalDate.of(2026, 11, 4)
+        val now = target.atStartOfDay(zone).toInstant().toEpochMilli()
+        val snapshot = WidgetClockSchedule.evaluateCumulative(target, now, zone)
+        assertFalse(snapshot.visible)
+        assertEquals(0L, snapshot.remainingMillis)
+        assertTrue(snapshot.boundaries.isEmpty())
+    }
+
 }

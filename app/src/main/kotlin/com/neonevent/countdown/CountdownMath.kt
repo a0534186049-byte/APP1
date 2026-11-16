@@ -26,6 +26,19 @@ object CountdownMath {
     }
 
     /**
+     * Counts actual time until the beginning of the selected local event date.
+     * Each field is a total: 2 days = 48 hours = 2,880 minutes.
+     * Positive partial seconds round up, so the countdown never reaches zero early.
+     */
+    fun calculateCumulative(eventLocalDate: LocalDate, nowMillis: Long, zone: ZoneId = ZoneId.systemDefault()): CountdownParts {
+        val targetMillis = eventLocalDate.atStartOfDay(zone).toInstant().toEpochMilli()
+        val remainingMillis = (targetMillis - nowMillis).coerceAtLeast(0L)
+        if (remainingMillis == 0L) return CountdownParts(true, 0, 0, 0, 0)
+        val totalSeconds = (remainingMillis + 999L) / 1000L
+        return CountdownParts(false, totalSeconds / 86_400L, totalSeconds / 3_600L, totalSeconds / 60L, totalSeconds)
+    }
+
+    /**
      * Counts calendar days to the selected local event date and, until that date,
      * shows the time remaining to the next local midnight. This preserves the
      * original home-screen clock units without inventing an event time.

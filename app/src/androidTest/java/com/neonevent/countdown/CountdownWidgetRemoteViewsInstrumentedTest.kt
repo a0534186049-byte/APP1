@@ -29,7 +29,8 @@ class CountdownWidgetRemoteViewsInstrumentedTest {
         assertNotNull(inflated.findViewById<View>(R.id.widget_time_value))
         val timeCube = inflated.findViewById<LinearLayout>(R.id.widget_cube_time)
         assertNotNull(timeCube)
-        assertEquals("Time cube should only contain the Chronometer; the label was removed.", 1, timeCube.childCount)
+        assertEquals(2, timeCube.childCount)
+        assertNotNull(inflated.findViewById<View>(R.id.widget_time_label))
         assertNotNull(inflated.findViewById<View>(R.id.widget_background_overlay))
     }
 
@@ -74,14 +75,17 @@ class CountdownWidgetRemoteViewsInstrumentedTest {
                     "0%s"
                 )
                 observed += capture(42L * 60L * 1000L + 19_000L, "00:%s")
+                observed += capture(48L * 60L * 60L * 1000L + 15L * 60L * 1000L + 19_000L, "%s")
                 chronometer.stop()
             }
         }
-        assertEquals(4, observed.size)
+        assertEquals(5, observed.size)
         assertTrue(observed[0].matches(Regex("^12:42:1[0-9]$")))
         assertTrue(observed[1].matches(Regex("^09:42:1[0-9]$")))
         assertTrue(observed[2].matches(Regex("^01:42:1[0-9]$")))
         assertTrue(observed[3].matches(Regex("^00:42:1[0-9]$")))
+        assertTrue("Total hours must not wrap at 24: ${observed[4]}",
+            observed[4].matches(Regex("^48:15:1[0-9]$")))
     }
 
     @Test fun titleCanBeHiddenForTheNoTitleVariant() {
