@@ -68,20 +68,26 @@ class MainActivity : ComponentActivity() {
         val frame = FrameLayout(this).apply { setBackgroundColor(ink); layoutDirection = View.LAYOUT_DIRECTION_RTL }
         frame.addView(NeonCountdownView(this), FrameLayout.LayoutParams(-1, -1))
 
+        val compactCumulativeControls = prefs.isCumulativeCountdown
         val settings = TextView(this).apply {
             text = "⚙"
-            textSize = 27f
+            textSize = if (compactCumulativeControls) 23f else 27f
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            background = roundBackground(0xD60B1422.toInt(), 0xB8FFFFFF.toInt(), 28)
+            background = roundBackground(
+                0xD60B1422.toInt(), 0xB8FFFFFF.toInt(),
+                if (compactCumulativeControls) 24 else 28
+            )
             contentDescription = "הגדרות"
             elevation = dp(4).toFloat()
             setOnClickListener { buildSettingsScreen() }
         }
         // Use physical LEFT gravity, not START, so RTL layout never mirrors this button.
-        frame.addView(settings, FrameLayout.LayoutParams(dp(54), dp(54), Gravity.TOP or Gravity.LEFT).apply {
-            topMargin = dp(18)
-            leftMargin = dp(16)
+        // Only cumulative mode gets the smaller, higher gear; the original display is unchanged.
+        val settingsSize = if (compactCumulativeControls) dp(48) else dp(54)
+        frame.addView(settings, FrameLayout.LayoutParams(settingsSize, settingsSize, Gravity.TOP or Gravity.LEFT).apply {
+            topMargin = if (compactCumulativeControls) dp(8) else dp(18)
+            leftMargin = if (compactCumulativeControls) dp(12) else dp(16)
         })
         setContentView(frame)
     }

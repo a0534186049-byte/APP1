@@ -79,17 +79,6 @@ object WidgetClockSchedule {
         )
     }
 
-    /** Total duration for the selected event date; Chronometer ticks each second. */
-    fun evaluateCumulative(eventLocalDate: LocalDate, nowMillis: Long, zone: ZoneId = ZoneId.systemDefault()): WidgetClockSnapshot {
-        val now = Instant.ofEpochMilli(nowMillis).atZone(zone)
-        val targetMillis = eventLocalDate.atStartOfDay(zone).toInstant().toEpochMilli()
-        val remaining = (targetMillis - nowMillis).coerceAtLeast(0L)
-        if (remaining == 0L) return WidgetClockSnapshot(false, null, 0L, "%s", emptyList())
-        val midnightMillis = now.toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
-        val boundaries = if (midnightMillis > nowMillis) listOf(WidgetClockBoundaryTime(WidgetClockBoundary.MIDNIGHT, midnightMillis)) else emptyList()
-        return WidgetClockSnapshot(true, midnightMillis, remaining, "%s", boundaries)
-    }
-
     fun formatForRemaining(remainingMillis: Long): String = when {
         remainingMillis >= TEN_HOURS_MS -> "%s"
         remainingMillis >= ONE_HOUR_MS -> "0%s"

@@ -37,7 +37,8 @@ object HomeScreenGeometryCalculator {
         val count = visibleUnitCount.coerceIn(0, 4)
         val title = heightDp * if (landscape) 0.10f else 0.155f
         val top = maxOf(heightDp * 0.205f, title + 27f * fontScale + 4f)
-        val bottom = (heightDp - if (landscape) 54f else 78f).coerceAtLeast(top + 1f)
+        val bottomReserveDp = if (landscape) 90f else maxOf(150f, heightDp * 0.20f)
+        val bottom = (heightDp - bottomReserveDp).coerceAtLeast(top + 1f)
         val available = (bottom - top - gap * (count - 1).coerceAtLeast(0)).coerceAtLeast(1f)
         val cardHeight = if (count == 0) 0f else available / count
         val cardWidth = (widthDp - side * 2f).coerceAtLeast(1f)
@@ -45,9 +46,9 @@ object HomeScreenGeometryCalculator {
             HomeCardRect(side * d, (top + i * (cardHeight + gap)) * d, cardWidth * d, cardHeight * d)
         }
         val lastBottom = cards.lastOrNull()?.bottom?.div(d) ?: top
-        val date = lastBottom + 13f
-        val quote = date + if (landscape) 11f else 19f
-        val quoteHeight = (heightDp - (if (landscape) 2f else 9f) - quote).coerceAtLeast(0f)
+        val date = lastBottom + if (landscape) 12f else 15f
+        val quote = date + if (landscape) 12f else 28f
+        val quoteHeight = (heightDp - (if (landscape) 4f else 12f) - quote).coerceAtLeast(0f)
         return HomeScreenGeometry(null, cards, title * d, date * d, quote * d, quoteHeight * d)
     }
 

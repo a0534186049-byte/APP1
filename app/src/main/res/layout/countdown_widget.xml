@@ -107,18 +107,6 @@
                     android:textSize="22sp"
                     android:maxLines="1" />
 
-                <TextView
-                    android:id="@+id/widget_time_label"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:text="שעות · דקות · שניות"
-                    android:textColor="#FFFFE8B2"
-                    android:fontFamily="@font/frank_ruhl_libre_variable"
-                    android:fontVariationSettings="'wght' 500"
-                    android:textSize="8sp"
-                    android:maxLines="1"
-                    android:visibility="gone" />
 
             </LinearLayout>
         </LinearLayout>

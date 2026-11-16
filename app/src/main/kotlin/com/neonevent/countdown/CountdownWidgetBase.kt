@@ -72,14 +72,7 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
 
         fun scheduleBoundaries(context: Context) {
             if (!hasWidgets(context)) { cancelBoundaries(context); return }
-            val prefs = CountdownPrefs(context)
-            val eventDate = prefs.eventLocalDate()
-            val now = System.currentTimeMillis()
-            val clock = if (prefs.isCumulativeCountdown) {
-                WidgetClockSchedule.evaluateCumulative(eventDate, now)
-            } else {
-                WidgetClockSchedule.evaluate(eventDate, now)
-            }
+            val clock = WidgetClockSchedule.evaluate(CountdownPrefs(context).eventLocalDate(), System.currentTimeMillis())
             val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val exact = Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()
             WidgetClockBoundary.values().forEach { b ->
@@ -116,10 +109,8 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
             try {
                 val prefs = CountdownPrefs(context)
                 val now = System.currentTimeMillis()
-                val eventDate = prefs.eventLocalDate()
-                val cumulativeMode = prefs.isCumulativeCountdown
-                val parts = if (cumulativeMode) CountdownMath.calculateCumulative(eventDate, now) else CountdownMath.calculateDateOnly(eventDate, now)
-                val clock = if (cumulativeMode) WidgetClockSchedule.evaluateCumulative(eventDate, now) else WidgetClockSchedule.evaluate(eventDate, now)
+                val parts = CountdownMath.calculateDateOnly(prefs.eventLocalDate(), now)
+                val clock = WidgetClockSchedule.evaluate(prefs.eventLocalDate(), now)
                 ids.forEach { id ->
                     val views = RemoteViews(context.packageName, R.layout.countdown_widget)
                     views.setViewVisibility(R.id.widget_title, if (showTitle && prefs.showTitle) View.VISIBLE else View.GONE)
@@ -127,8 +118,6 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
                     views.setTextViewText(R.id.widget_days_value, parts.days.toString())
                     views.setTextViewText(R.id.widget_target_date, prefs.formattedTargetDate())
                     views.setViewVisibility(R.id.widget_cube_time, if (clock.visible) View.VISIBLE else View.GONE)
-                    views.setViewVisibility(R.id.widget_time_label, if (cumulativeMode && clock.visible) View.VISIBLE else View.GONE)
-                    if (cumulativeMode && clock.visible) views.setTextViewText(R.id.widget_time_label, "שעות · דקות · שניות")
                     if (clock.visible) {
                         views.setChronometerCountDown(R.id.widget_time_value, true)
                         views.setChronometer(

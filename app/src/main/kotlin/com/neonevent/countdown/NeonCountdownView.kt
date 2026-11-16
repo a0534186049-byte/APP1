@@ -185,7 +185,7 @@ object NeonCountdownRenderer {
             }
             val numberText = rawValue.toString()
             val label = when (index) {
-                0 -> "ימים"
+                0 -> if (cumulativeMode) "ימים מלאים" else "ימים"
                 1 -> "שעות"
                 2 -> "דקות"
                 else -> "שניות"

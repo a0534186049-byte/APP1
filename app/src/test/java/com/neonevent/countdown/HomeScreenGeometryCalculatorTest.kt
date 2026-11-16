@@ -147,7 +147,9 @@ class HomeScreenGeometryCalculatorTest {
             }
             for (index in 1 until cards.size) assertTrue(cards[index - 1].bottom < cards[index].top)
             assertTrue(cards.last().bottom < layout.dateBaseline)
+            assertTrue(layout.dateBaseline - cards.last().bottom >= 12f)
             assertTrue(layout.quoteBaseline + layout.quoteMaxHeight <= height + 0.01f)
+            if (height >= 640f) assertTrue("Cumulative quote area too short at ${width}x${height}", layout.quoteMaxHeight >= 80f)
         }
     }
 
