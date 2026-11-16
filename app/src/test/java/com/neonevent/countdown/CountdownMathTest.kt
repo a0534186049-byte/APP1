@@ -117,9 +117,9 @@ class CountdownMathTest {
         val now = target.minusDays(2).atStartOfDay(zone).toInstant().toEpochMilli() + 1_234L
         val first = CountdownMath.calculateCumulative(target, now, zone)
         val nextSecond = CountdownMath.calculateCumulative(target, now + 1_000L, zone)
+        assertEquals(first.seconds / 60L, first.minutes)
+        assertEquals(first.seconds / 3_600L, first.hours)
         assertEquals(first.seconds - 1L, nextSecond.seconds)
-        assertEquals(first.minutes - 1L, nextSecond.minutes)
-        assertEquals(first.hours, nextSecond.hours)
     }
 
     @Test fun cumulativeModeUsesRealElapsedHoursAcrossDaylightSavingChanges() {
