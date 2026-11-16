@@ -72,7 +72,14 @@ abstract class CountdownWidgetBase : AppWidgetProvider() {
 
         fun scheduleBoundaries(context: Context) {
             if (!hasWidgets(context)) { cancelBoundaries(context); return }
-            val clock = WidgetClockSchedule.evaluate(CountdownPrefs(context).eventLocalDate(), System.currentTimeMillis())
+            val prefs = CountdownPrefs(context)
+            val eventDate = prefs.eventLocalDate()
+            val now = System.currentTimeMillis()
+            val clock = if (prefs.isCumulativeCountdown) {
+                WidgetClockSchedule.evaluateCumulative(eventDate, now)
+            } else {
+                WidgetClockSchedule.evaluate(eventDate, now)
+            }
             val alarm = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             val exact = Build.VERSION.SDK_INT < 31 || alarm.canScheduleExactAlarms()
             WidgetClockBoundary.values().forEach { b ->
